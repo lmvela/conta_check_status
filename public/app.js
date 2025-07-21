@@ -28,9 +28,41 @@ function renderGrid({ months, columns, grid }) {
       : row.month;
     html += `<tr><td>${formattedMonth}</td>`;
     columns.forEach(col => {
-      html += `<td class="cell-${row[col.key] ? 'ok' : 'fail'}">` +
-        (row[col.key] ? '✔️' : '❌') +
-        '</td>';
+      const cell = row[col.key];
+      let icon, cellClass, title = '';
+      if (cell.count === 0) {
+        icon = '❌';
+        cellClass = 'fail';
+      } else if (cell.count === 1) {
+        icon = '✔️';
+        cellClass = 'ok';
+        title = cell.paths[0];
+        // If Excel, download; else, open viewer
+        const ext = cell.paths[0].split('.').pop().toLowerCase();
+        if (ext === 'xls' || ext === 'xlsx') {
+          // Set download filename: original + _readonly + extension
+          const pathParts = cell.paths[0].split(/[\\/]/);
+          const origName = pathParts[pathParts.length - 1];
+          const dotIdx = origName.lastIndexOf('.');
+          const base = dotIdx !== -1 ? origName.slice(0, dotIdx) : origName;
+          const extension = dotIdx !== -1 ? origName.slice(dotIdx) : '';
+          const downloadName = base + '_readonly' + extension;
+          icon = `<a href="/file?file=${encodeURIComponent(cell.paths[0])}" download="${downloadName}" style="color:inherit;text-decoration:underline;">✔️</a>`;
+          icon += `<div style="font-size:0.8em; color:#bbb; margin-top:2px;">${extension}</div>`;
+        } else {
+          const pathParts = cell.paths[0].split(/[\\/]/);
+          const origName = pathParts[pathParts.length - 1];
+          const dotIdx = origName.lastIndexOf('.');
+          const extension = dotIdx !== -1 ? origName.slice(dotIdx) : '';
+          icon = `<a href="/view?file=${encodeURIComponent(cell.paths[0])}" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline;">✔️</a>`;
+          icon += `<div style="font-size:0.8em; color:#bbb; margin-top:2px;">${extension}</div>`;
+        }
+      } else {
+        icon = '⚠️';
+        cellClass = 'warn';
+        title = cell.paths.join('\n');
+      }
+      html += `<td class="cell-${cellClass}"${title ? ` title="${title.replace(/"/g, '"')}"` : ''}>${icon}</td>`;
     });
     html += '</tr>';
   }

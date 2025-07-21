@@ -14,5 +14,5 @@ Thumbs.db
 logs/
 *.log
 
-# Data folder (optional, comment out if you want to track data)
-# data/
+# Data folder (ignored by default)
+data/
