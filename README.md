@@ -1,0 +1,63 @@
+# File Status Grid Web App
+
+This is a one-page web application that checks the content of a configured folder (and all its subfolders) for files following a specific pattern. It displays a grid showing which files are present for each month and category.
+
+## Features
+
+- Scans a folder and all subfolders for files named as `YYYYMM...` (e.g., `202401_sales.csv`)
+- Uses a configurable dictionary to define expected file types (columns)
+- Displays a grid: rows are months (oldest at bottom, newest at top), columns are file types
+- Green check (✔️) if the expected file is present, red cross (❌) if not
+- Modern UI: dark purple background, white text, rounded edges, fixed-width columns
+
+## Configuration
+
+Edit `config.json`:
+
+```json
+{
+  "folderPath": "./data",
+  "dictionary": {
+    "sales": "Sales Report",
+    "inventory": "Inventory List",
+    "expenses": "Expense Sheet"
+  }
+}
+```
+
+- `folderPath`: Path to the folder to scan (relative to project root)
+- `dictionary`: Keys are substrings to look for in filenames, values are column names
+
+## Setup
+
+1. Install dependencies:
+
+   ```
+   npm install
+   ```
+
+2. Start the server:
+
+   ```
+   npm start
+   ```
+
+3. Open your browser at [http://localhost:3001](http://localhost:3001)
+
+4. Place your files in the configured folder (and subfolders).
+
+## File Pattern
+
+- Files must start with `YYYYMM` (e.g., `202401_sales.csv`)
+- The substring for each column (e.g., `sales`) must appear in the filename
+
+## Project Structure
+
+- `server.js` — Node.js/Express backend
+- `public/` — Frontend (HTML, JS, CSS)
+- `config.json` — Configuration file
+- `data/` — Place your files here
+
+## License
+
+MIT

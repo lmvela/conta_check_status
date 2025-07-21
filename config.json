@@ -1,0 +1,8 @@
+{
+  "folderPath": "./data",
+  "dictionary": {
+    "OB_Unificado": "OpenBank Report Mensual" ,
+    "ING_Mensual": "ING Report Mensual" ,
+    "TRADER_Efectivo": "TRADER Efectivo"
+  }
+}
