@@ -5,10 +5,29 @@ const path = require('path');
 const app = express();
 const PORT = 3001;
 
-// Load config
-const config = JSON.parse(fs.readFileSync('./config.json', 'utf8'));
+// Logging utility
+const LOG_DIR = path.join(__dirname, 'log');
+const LOG_FILE = path.join(LOG_DIR, 'main.log');
+function logMessage(functionName, message) {
+  try {
+    if (!fs.existsSync(LOG_DIR)) {
+      fs.mkdirSync(LOG_DIR, { recursive: true });
+    }
+    const timestamp = new Date().toISOString();
+    const logLine = `[${timestamp}] [${functionName}] ${message}\n`;
+    fs.appendFileSync(LOG_FILE, logLine, 'utf8');
+  } catch (err) {
+    // If logging fails, print to console as fallback
+    console.error('Logging error:', err);
+  }
+}
+
+ // Load config
+const config = JSON.parse(fs.readFileSync('./config/config.json', 'utf8'));
 const folderPath = config.folderPath;
-const dictionary = config.dictionary;
+
+// Valid file extensions
+const validExtensions = ['.txt', '.csv', '.pdf', '.png', '.jpg', '.jpeg', '.bmp', '.xls', '.xlsx'];
 
 // Helper to extract YYYYMM from filename
 function extractYearMonth(filename) {
@@ -16,10 +35,11 @@ function extractYearMonth(filename) {
   return match ? match[1] : null;
 }
 
-// API endpoint
+ // API endpoint
 app.get('/api/status', (req, res) => {
   // Recursively collect all files in folderPath and subfolders
   function getAllFiles(dir, fileList = []) {
+    logMessage('getAllFiles', `Reading directory: ${dir}`);
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     entries.forEach(entry => {
       const fullPath = path.join(dir, entry.name);
@@ -32,82 +52,104 @@ app.get('/api/status', (req, res) => {
     return fileList;
   }
 
+  logMessage('/api/status', 'Started processing API request');
   let files = [];
   try {
     files = getAllFiles(folderPath);
+    logMessage('/api/status', `Found ${files.length} files in folderPath: ${folderPath}`);
   } catch (err) {
+    logMessage('/api/status', `ERROR: Failed to read folder: ${err.message}`);
     return res.status(500).json({ error: 'Failed to read folder' });
   }
 
-  // Filter files matching pattern
+  // Pattern: YYYYMM_Description.ext
+  const pattern = /^(\d{6})_([^.]+)(\.[^.]+)$/;
+
+  // Process files
   const fileData = [];
+  const unprocessedFiles = [];
   files.forEach(fullPath => {
     const file = path.basename(fullPath);
-    const ym = extractYearMonth(file);
-    if (ym) {
-      fileData.push({ file, ym });
+    const match = file.match(pattern);
+    if (match && validExtensions.includes(match[3].toLowerCase())) {
+      fileData.push({
+        file,
+        ym: match[1],
+        description: match[2],
+        ext: match[3],
+        fullPath
+      });
+      logMessage('/api/status', `Processed file: ${file} (month: ${match[1]}, desc: ${match[2]}, ext: ${match[3]})`);
+    } else {
+      unprocessedFiles.push(fullPath);
+      logMessage('/api/status', `Unprocessed file: ${file}`);
     }
   });
 
-    // Get all unique months, sorted ascending
-    const monthsSet = new Set(fileData.map(f => f.ym));
-    let months = Array.from(monthsSet).sort();
+  // Get all unique months, sorted ascending
+  const monthsSet = new Set(fileData.map(f => f.ym));
+  let months = Array.from(monthsSet).sort();
+  logMessage('/api/status', `Unique months found: ${months.join(', ')}`);
 
-    // Generate all months between min and max (inclusive)
-    function getAllMonths(start, end) {
-      const result = [];
-      let year = parseInt(start.slice(0, 4), 10);
-      let month = parseInt(start.slice(4, 6), 10);
-      const endYear = parseInt(end.slice(0, 4), 10);
-      const endMonth = parseInt(end.slice(4, 6), 10);
-      while (year < endYear || (year === endYear && month <= endMonth)) {
-        result.push(
-          year.toString().padStart(4, '0') +
-          month.toString().padStart(2, '0')
-        );
-        month++;
-        if (month > 12) {
-          month = 1;
-          year++;
-        }
+  // Get all unique descriptions (columns)
+  const descSet = new Set(fileData.map(f => f.description));
+  const columns = Array.from(descSet).sort().map(desc => ({
+    key: desc,
+    label: desc
+  }));
+  logMessage('/api/status', `Unique descriptions (columns) found: ${columns.map(c => c.key).join(', ')}`);
+
+  // Generate all months between min and max (inclusive)
+  function getAllMonths(start, end) {
+    logMessage('getAllMonths', `Generating months from ${start} to ${end}`);
+    const result = [];
+    let year = parseInt(start.slice(0, 4), 10);
+    let month = parseInt(start.slice(4, 6), 10);
+    const endYear = parseInt(end.slice(0, 4), 10);
+    const endMonth = parseInt(end.slice(4, 6), 10);
+    while (year < endYear || (year === endYear && month <= endMonth)) {
+      result.push(
+        year.toString().padStart(4, '0') +
+        month.toString().padStart(2, '0')
+      );
+      month++;
+      if (month > 12) {
+        month = 1;
+        year++;
       }
-      return result;
     }
+    logMessage('getAllMonths', `Generated months: ${result.join(', ')}`);
+    return result;
+  }
 
-    if (months.length > 0) {
-      const allMonths = getAllMonths(months[0], months[months.length - 1]);
-      months = allMonths;
-    }
+  if (months.length > 0) {
+    const allMonths = getAllMonths(months[0], months[months.length - 1]);
+    months = allMonths;
+  }
 
-    // Prepare columns and result matrix
-    const columns = Object.entries(dictionary).map(([key, value]) => ({
-      key,
-      label: value
-    }));
-
-    // Build grid: rows = months, columns = dictionary keys
-    const grid = months.map(month => {
-      const row = { month };
-      columns.forEach(col => {
-        // Collect all matching files for this month and substring
-        const matches = files.filter(fullPath => {
-          const file = path.basename(fullPath);
-          const ym = extractYearMonth(file);
-          return ym === month && file.includes(col.key);
-        });
-        row[col.key] = {
-          count: matches.length,
-          paths: matches
-        };
-      });
-      return row;
+  // Build grid: rows = months, columns = descriptions
+  const grid = months.map(month => {
+    const row = { month };
+    columns.forEach(col => {
+      // Collect all matching files for this month and description
+      const matches = fileData.filter(f => f.ym === month && f.description === col.key);
+      row[col.key] = {
+        count: matches.length,
+        paths: matches.map(f => f.fullPath),
+        exts: matches.map(f => f.ext)
+      };
+      logMessage('/api/status', `Grid cell [${month}][${col.key}]: ${matches.length} file(s)`);
     });
+    return row;
+  });
 
-    res.json({
-      months,
-      columns,
-      grid
-    });
+  logMessage('/api/status', `Returning grid with ${months.length} months and ${columns.length} columns. Unprocessed files: ${unprocessedFiles.length}`);
+  res.json({
+    months,
+    columns,
+    grid,
+    unprocessedFiles
+  });
 });
 
 const mime = require('mime-types');

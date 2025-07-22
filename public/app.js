@@ -7,6 +7,7 @@ async function fetchStatus() {
   return res.json();
 }
 
+// Render the main grid
 function renderGrid({ months, columns, grid }) {
   if (!months.length) {
     return '<p>No files found in the configured folder.</p>';
@@ -71,10 +72,49 @@ function renderGrid({ months, columns, grid }) {
   return html;
 }
 
+// Render the unprocessed files list
+function renderUnprocessedFiles(unprocessedFiles) {
+  if (!unprocessedFiles || !unprocessedFiles.length) return '';
+  let html = `
+    <div class="unprocessed-section">
+      <h2 style="margin-top:2em; color:#fff; text-align:center;">Unprocessed Files</h2>
+      <div class="unprocessed-list" style="background:#2d014d; border-radius:10px; padding:1em; margin-bottom:2em;">
+        <table style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th style="background:#4b1a7f; color:#fff; text-align:left; padding:8px; border-radius:6px 6px 0 0;">Full Path</th>
+            </tr>
+          </thead>
+          <tbody>
+  `;
+  unprocessedFiles.forEach(file => {
+    html += `
+      <tr>
+        <td style="padding:8px; color:#fff; font-family:monospace; word-break:break-all; background:#1a0033; font-weight:bold;">
+          ${file}
+        </td>
+      </tr>
+    `;
+  });
+  html += `
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+  return html;
+}
+
 async function main() {
   const data = await fetchStatus();
   if (!data) return;
-  document.getElementById('app').innerHTML = renderGrid(data);
+  let html = `
+    <div style="display: flex; flex-direction: column; align-items: stretch; width: 100%; max-width: 1100px; margin: 32px auto; padding: 0 16px;">
+      ${renderGrid(data)}
+      ${renderUnprocessedFiles(data.unprocessedFiles)}
+    </div>
+  `;
+  document.getElementById('app').innerHTML = html;
 }
 
 main();

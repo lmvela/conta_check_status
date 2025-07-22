@@ -5,14 +5,16 @@ This is a one-page web application that checks the content of a configured folde
 ## Features
 
 - Scans a folder and all subfolders for files named as `YYYYMM...` (e.g., `202401_sales.csv`)
-- Uses a configurable dictionary to define expected file types (columns)
-- Displays a grid: rows are months (oldest at bottom, newest at top), columns are file types
-- Green check (✔️) if the expected file is present, red cross (❌) if not, warning (⚠️) if more than one file is found for a cell
+- Scans for files named as `YYYYMM_Description.ext` (e.g., `202401_sales.csv`) with a valid extension
+- Dynamically creates columns for each unique `Description` found in the filenames
+- Displays a grid: rows are months (oldest at bottom, newest at top), columns are Descriptions
+- Green check (✔️) if a file is present, red cross (❌) if not, warning (⚠️) if more than one file is found for a cell
 - Hover over green or warning icons to see the file path(s)
 - For green checks, the icon is clickable:
   - For text, csv, pdf, png, jpg, bmp: opens a file viewer in a new tab
   - For Excel files (.xls, .xlsx): downloads the file as "_readonly"
 - The file extension is shown below each green check icon
+- At the end of the grid, a list of files that could not be processed (invalid format or extension) is shown
 - Modern UI: dark purple background, white text, rounded edges, fixed-width columns
 - No sticky headers; grid scrolls normally
 
@@ -26,21 +28,16 @@ Supported formats for viewing in the browser:
 
 ## Configuration
 
-Edit `config.json`:
+Edit `config/config.json`:
 
 ```json
 {
-  "folderPath": "./data",
-  "dictionary": {
-    "sales": "Sales Report",
-    "inventory": "Inventory List",
-    "expenses": "Expense Sheet"
-  }
+  "folderPath": "./data"
 }
 ```
 
 - `folderPath`: Path to the folder to scan (relative to project root)
-- `dictionary`: Keys are substrings to look for in filenames, values are column names
+- No dictionary is needed; columns are detected automatically from filenames
 
 ## Setup
 
@@ -62,14 +59,17 @@ Edit `config.json`:
 
 ## File Pattern
 
-- Files must start with `YYYYMM` (e.g., `202401_sales.csv`)
-- The substring for each column (e.g., `sales`) must appear in the filename
+- Files must be named as `YYYYMM_Description.ext` (e.g., `202401_sales.csv`)
+- `YYYYMM` is the year and month (6 digits)
+- `Description` is any string (used as the column name)
+- `.ext` is a valid extension: `.txt`, `.csv`, `.pdf`, `.png`, `.jpg`, `.jpeg`, `.bmp`, `.xls`, `.xlsx`
+- Files not matching this pattern or with invalid extensions are listed as "unprocessed" at the end of the grid
 
 ## Project Structure
 
 - `server.js` — Node.js/Express backend
 - `public/` — Frontend (HTML, JS, CSS)
-- `config.json` — Configuration file
+- `config/config.json` — Configuration file
 - `data/` — Place your files here
 
 ## License
