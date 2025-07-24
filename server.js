@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const app = express();
-const PORT = 3001;
+const PORT = 9000;
 
 // Logging utility
 const LOG_DIR = path.join(__dirname, 'log');

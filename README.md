@@ -53,7 +53,7 @@ Edit `config/config.json`:
    npm start
    ```
 
-3. Open your browser at [http://localhost:3001](http://localhost:3001)
+3. Open your browser at [http://localhost:9000](http://localhost:9000)
 
 4. Place your files in the configured folder (and subfolders).
 
