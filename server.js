@@ -27,13 +27,7 @@ const config = JSON.parse(fs.readFileSync('./config/config.json', 'utf8'));
 const folderPath = config.folderPath;
 
 // Valid file extensions
-const validExtensions = ['.txt', '.csv', '.pdf', '.png', '.jpg', '.jpeg', '.bmp', '.xls', '.xlsx'];
-
-// Helper to extract YYYYMM from filename
-function extractYearMonth(filename) {
-  const match = filename.match(/^(\d{6})/);
-  return match ? match[1] : null;
-}
+const validExtensions = ['txt', 'csv', 'pdf', 'png', 'jpg', 'jpeg', 'bmp', 'xls', 'xlsx'];
 
  // API endpoint
 app.get('/api/status', (req, res) => {
@@ -63,7 +57,7 @@ app.get('/api/status', (req, res) => {
   }
 
   // Pattern: YYYYMM_Description.ext
-  const pattern = /^(\d{6})_([^.]+)(\.[^.]+)$/;
+  const pattern = /^(\d{6})_([A-Za-z]+)_(.*?)(?:____.*)?\.(\w+)$/;
 
   // Process files
   const fileData = [];
@@ -71,18 +65,24 @@ app.get('/api/status', (req, res) => {
   files.forEach(fullPath => {
     const file = path.basename(fullPath);
     const match = file.match(pattern);
-    if (match && validExtensions.includes(match[3].toLowerCase())) {
-      fileData.push({
-        file,
-        ym: match[1],
-        description: match[2],
-        ext: match[3],
-        fullPath
-      });
-      logMessage('/api/status', `Processed file: ${file} (month: ${match[1]}, desc: ${match[2]}, ext: ${match[3]})`);
+    if (match) {
+      logMessage('/api/status', `Match Regex: ${file} (month: ${match[1]}, desc: ${match[2]} ${match[3]}, ext: ${match[4]})`);
+      if (validExtensions.includes(match[4].toLowerCase())) {
+        fileData.push({
+          file,
+          ym: match[1],
+          description: match[2] + "_" + match[3],
+          ext: match[4],
+          fullPath
+        });
+        logMessage('/api/status', `Processed file OK: ${file} `);
+      } else {
+        unprocessedFiles.push(fullPath);
+        logMessage('/api/status', `Invalid extension file: ${file} `);
+      }
     } else {
       unprocessedFiles.push(fullPath);
-      logMessage('/api/status', `Unprocessed file: ${file}`);
+      logMessage('/api/status', `Unmatch Regex: ${file}`);
     }
   });
 
