@@ -41,11 +41,11 @@ function logMessage(functionName, message) {
   }
 }
 
-// Log absolute paths for folderPath and logPath on every browser connection
+// Log all routes and absolute paths for folderPath and logPath on every request
 app.use((req, res, next) => {
   const absFolderPath = path.resolve(folderPath);
   const absLogPath = path.resolve(logPath);
-  logMessage('connection', `Request from browser: folderPath=${absFolderPath}, logPath=${absLogPath}`);
+  logMessage('route', `Request: ${req.method} ${req.originalUrl} | folderPath=${absFolderPath}, logPath=${absLogPath}`);
   next();
 });
 
