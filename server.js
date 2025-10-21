@@ -5,13 +5,17 @@ const path = require('path');
 const app = express();
 const PORT = 9000;
 
+// Load config from root config.json
+const config = JSON.parse(fs.readFileSync('./config.json', 'utf8'));
+const folderPath = config.folderPath;
+const logPath = config.logPath || path.join(__dirname, 'log');
+const LOG_FILE = path.join(logPath, 'main.log');
+
 // Logging utility
-const LOG_DIR = path.join(__dirname, 'log');
-const LOG_FILE = path.join(LOG_DIR, 'main.log');
 function logMessage(functionName, message) {
   try {
-    if (!fs.existsSync(LOG_DIR)) {
-      fs.mkdirSync(LOG_DIR, { recursive: true });
+    if (!fs.existsSync(logPath)) {
+      fs.mkdirSync(logPath, { recursive: true });
     }
     const timestamp = new Date().toISOString();
     const logLine = `[${timestamp}] [${functionName}] ${message}\n`;
@@ -22,9 +26,13 @@ function logMessage(functionName, message) {
   }
 }
 
- // Load config
-const config = JSON.parse(fs.readFileSync('./config/config.json', 'utf8'));
-const folderPath = config.folderPath;
+// Log absolute paths for folderPath and logPath on every browser connection
+app.use((req, res, next) => {
+  const absFolderPath = path.resolve(folderPath);
+  const absLogPath = path.resolve(logPath);
+  logMessage('connection', `Request from browser: folderPath=${absFolderPath}, logPath=${absLogPath}`);
+  next();
+});
 
 // Valid file extensions
 const validExtensions = ['txt', 'csv', 'pdf', 'png', 'jpg', 'jpeg', 'bmp', 'xls', 'xlsx'];
