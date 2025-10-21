@@ -17,3 +17,4 @@ logs/
 # Data folder (ignored by default)
 data/
 log/
+config/

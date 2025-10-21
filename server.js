@@ -5,10 +5,25 @@ const path = require('path');
 const app = express();
 const PORT = 9000;
 
-// Load config from root config.json
-const config = JSON.parse(fs.readFileSync('./config.json', 'utf8'));
-const folderPath = config.folderPath;
-const logPath = config.logPath || path.join(__dirname, 'log');
+// Load config from ./config/config.json, create with defaults if not found
+const configDir = './config';
+const configPath = path.join(configDir, 'config.json');
+const defaultConfig = { folderPath: "/data", logPath: "/log" };
+let config = defaultConfig;
+try {
+  if (!fs.existsSync(configPath)) {
+    if (!fs.existsSync(configDir)) {
+      fs.mkdirSync(configDir, { recursive: true });
+    }
+    fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2), 'utf8');
+  }
+  config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+} catch (err) {
+  // Use defaults if file is missing or invalid
+  config = defaultConfig;
+}
+const folderPath = config.folderPath || "/data";
+const logPath = config.logPath || "/log";
 const LOG_FILE = path.join(logPath, 'main.log');
 
 // Logging utility
