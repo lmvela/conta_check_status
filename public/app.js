@@ -52,14 +52,14 @@ function renderGrid({ months, columns, grid }) {
           const base = dotIdx !== -1 ? origName.slice(0, dotIdx) : origName;
           const extension = dotIdx !== -1 ? origName.slice(dotIdx) : '';
           const downloadName = base + '_readonly' + extension;
-          icon = `<a href="/file?file=${encodeURIComponent(cell.paths[0])}" download="${downloadName}" style="color:inherit;text-decoration:underline;">✔️</a>`;
+          icon = `<a href="${basePath}/file?file=${encodeURIComponent(cell.paths[0])}" download="${downloadName}" style="color:inherit;text-decoration:underline;">✔️</a>`;
           icon += `<div style="font-size:0.8em; color:#bbb; margin-top:2px;">${extension}</div>`;
         } else {
           const pathParts = cell.paths[0].split(/[\\/]/);
           const origName = pathParts[pathParts.length - 1];
           const dotIdx = origName.lastIndexOf('.');
           const extension = dotIdx !== -1 ? origName.slice(dotIdx) : '';
-          icon = `<a href="/view?file=${encodeURIComponent(cell.paths[0])}" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline;">✔️</a>`;
+          icon = `<a href="${basePath}/view?file=${encodeURIComponent(cell.paths[0])}" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline;">✔️</a>`;
           icon += `<div style="font-size:0.8em; color:#bbb; margin-top:2px;">${extension}</div>`;
         }
       } else {
