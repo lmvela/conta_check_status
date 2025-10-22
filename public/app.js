@@ -1,5 +1,9 @@
+const basePath = window.location.pathname.startsWith('/conta_check_docs')
+  ? '/conta_check_docs'
+  : '';
+
 async function fetchStatus() {
-  const res = await fetch('/api/status');
+  const res = await fetch(`${basePath}/api/status`);
   if (!res.ok) {
     document.getElementById('app').innerHTML = 'Failed to load data.';
     return null;
