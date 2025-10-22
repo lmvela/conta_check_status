@@ -7,7 +7,7 @@ const PORT = 9000;
 
 // Load config from ./config/config.json, create with defaults if not found
 const configDir = './config';
-const configPath = path.join(configDir, 'config.json');
+const configPath = './config/config.json';
 const defaultConfig = { folderPath: "/data", logPath: "/log" };
 let config = defaultConfig;
 try {
@@ -46,6 +46,14 @@ app.use((req, res, next) => {
   const absFolderPath = path.resolve(folderPath);
   const absLogPath = path.resolve(logPath);
   logMessage('route', `Request: ${req.method} ${req.originalUrl} | folderPath=${absFolderPath}, logPath=${absLogPath}`);
+  next();
+});
+
+// Middleware to compute req.externalBaseUrl from forwarded headers
+app.use((req, res, next) => {
+  const forwardedProto = req.headers['x-forwarded-proto'] || req.protocol;
+  const forwardedHost = req.headers['x-forwarded-host'] || req.get("host");
+  req.externalBaseUrl = `${forwardedProto}://${forwardedHost}`;
   next();
 });
 
@@ -96,7 +104,8 @@ app.get('/api/status', (req, res) => {
           ym: match[1],
           description: match[2] + "_" + match[3],
           ext: match[4],
-          fullPath
+          fullPath,
+          public_url: `${req.externalBaseUrl}/conta_check_docs/api/status`
         });
         logMessage('/api/status', `Processed file OK: ${file} `);
       } else {
