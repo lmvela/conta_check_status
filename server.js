@@ -105,7 +105,7 @@ app.get('/api/status', (req, res) => {
           description: match[2] + "_" + match[3],
           ext: match[4],
           fullPath,
-          public_url: `${req.externalBaseUrl}/conta_check_docs/api/status`
+          //public_url: `${req.externalBaseUrl}/conta_check_docs/api/status`
         });
         logMessage('/api/status', `Processed file OK: ${file} `);
       } else {
