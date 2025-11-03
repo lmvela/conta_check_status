@@ -23,7 +23,14 @@ body, #app {
 
 #app {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
+  /* Remove centering, align content to left */
+}
+
+/* Left-align the main table with a small margin */
+#app table {
+  margin-left: 16px;
+  margin-right: auto;
 }
 
 table {
