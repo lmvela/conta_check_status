@@ -6,8 +6,8 @@ const app = express();
 const PORT = 9000;
 
 // Load config from ./config/config.json, create with defaults if not found
-const configDir = './config';
-const configPath = './config/config.json';
+const configDir = '../config';
+const configPath = '../config/config.json';
 const defaultConfig = { folderPath: "/data", logPath: "/log" };
 let config = defaultConfig;
 try {

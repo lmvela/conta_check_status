@@ -5,8 +5,8 @@
       "type": "node",
       "request": "launch",
       "name": "Debug Express Server",
-      "program": "${workspaceFolder}/server.js",
-      "cwd": "${workspaceFolder}",
+      "program": "${workspaceFolder}/app/server.js",
+      "cwd": "${workspaceFolder}/app",
       "env": {
         "NODE_ENV": "development"
       },
