@@ -1,13 +1,11 @@
 services:
-  flask_app:
+  app:
     build: .
-    container_name: conta_check_status_container
-    ports:
-      - "5000:5000"
+    container_name: conta_check_status
     volumes:
-      #- ./app:/app               # código (puede ser solo para desarrollo)
-      - ./config:/config         # configs externas
-      - ./logs:/logs             # logs accesibles
-      - ./data:/data             # datos persistentes
-    environment:
-      - FLASK_ENV=production
+      - ./config:/app/config
+      - ../conta_archive/archive/archive_main:/data
+      - ./log:/log
+    ports:
+      - "9000:9000"
+    restart: unless-stopped

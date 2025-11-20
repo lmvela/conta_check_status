@@ -1,10 +1,12 @@
-FROM python:3.11-slim
+# Imagen base con Node.js
+FROM node:20
 
 WORKDIR /app
 
-COPY app/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Instalar dependencias del sistema necesarias
+# Incluye git, rsync, bash y certificados para HTTPS
+RUN apt-get update && \
+    apt-get install -y git rsync bash ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
-COPY app/ .
-
-CMD ["python", "main.py"]
+CMD ["npm", "start", "--", "--port", "9000"]
