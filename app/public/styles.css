@@ -29,7 +29,7 @@ body, #app {
 
 /* Left-align the main table with a small margin */
 #app table {
-  margin-left: 16px;
+  margin-left: 0;
   margin-right: auto;
 }
 

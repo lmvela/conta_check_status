@@ -119,6 +119,12 @@ async function main() {
     </div>
   `;
   document.getElementById('app').innerHTML = html;
+
+  // Update the title with the file counter
+  const titleElem = document.getElementById('main-title');
+  if (titleElem && Array.isArray(data.grid)) {
+    titleElem.textContent = `File Status Grid (${data.grid.length})`;
+  }
 }
 
 main();
