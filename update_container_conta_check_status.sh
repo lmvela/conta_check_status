@@ -1,7 +1,8 @@
 #!/bin/bash
 
-REPO_NAME="conta_check_status"
-REPO_URL="https://github.com/lmvela/conta_check_status"
+sourec ../.env
+
+REPO_URL="https://lmvela:$GH_TOKEN@github.com/lmvela/conta_check_status.git"
 BASE_DIR="./app"                # Puedes cambiarlo si quieres
 
 echo "--------------------------------------------"
@@ -31,7 +32,7 @@ else
     echo "🔄 Repositorio encontrado. Actualizando..."
     cd "$BASE_DIR"
 
-    git pull
+    git pull "$REPO_URL" master
 
     if [ $? -ne 0 ]; then
         echo "❌ ERROR: No se pudo hacer git pull."
@@ -46,7 +47,9 @@ echo ""
 echo "🐳 Reconstruyendo contenedor con Docker Compose..."
 cd "$REPO_DIR"
 
-docker compose up --build --force-recreate -d
+docker compose down
+docker compose build --no-cache
+docker compose up -d
 
 if [ $? -ne 0 ]; then
     echo "❌ ERROR: Docker Compose falló."
@@ -56,3 +59,6 @@ fi
 echo ""
 echo "✅ Contenedor actualizado y corriendo."
 echo "--------------------------------------------"
+
+cd ..
+
