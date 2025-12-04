@@ -4,7 +4,9 @@ services:
     container_name: conta_check_status
     volumes:
       - ./config:/app/config
-      - ../conta_archive/archive/archive_main:/data
+      - ../conta_archive/archive/archive_main:/data_main
+      - ../conta_archive/archive/archive_support:/data_support
+      - ../conta_archive/archive/archive_periodic:/data_periodic
       - ./log:/log
     ports:
       - "9000:9000"
