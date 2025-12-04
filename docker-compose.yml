@@ -3,7 +3,7 @@ services:
     build: .
     container_name: conta_check_status
     volumes:
-      - ./config:/app/config
+      - ./config:/config
       - ../conta_archive/archive/archive_main:/data_main
       - ../conta_archive/archive/archive_support:/data_support
       - ../conta_archive/archive/archive_periodic:/data_periodic
