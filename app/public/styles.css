@@ -22,7 +22,7 @@ body, #app {
 }
 
 #app {
-  display: flex;
+  /* display: flex; */
   justify-content: flex-start;
   /* Remove centering, align content to left */
 }
@@ -100,4 +100,37 @@ tr:last-child td:last-child {
   font-size: 1.3em;
   background: #3a2a00;
   border-radius: 10px;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  margin: 8px auto 16px;
+  padding: 0 16px;
+}
+
+.tab {
+  background: #4b1a7f;
+  color: #fff;
+  border: 1px solid #5e2e8c;
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  transition: background 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+}
+
+.tab:hover {
+  background: #5b23a0;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
+
+.tab.active {
+  background: #7c3aed;
+  border-color: #7c3aed;
+  box-shadow: 0 2px 14px rgba(0,0,0,0.25);
 }

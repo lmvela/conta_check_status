@@ -8,7 +8,12 @@ const PORT = 9000;
 // Load config from ./config/config.json, create with defaults if not found
 const configDir = '../config';
 const configPath = '../config/config.json';
-const defaultConfig = { folderPath: "/data", logPath: "/log" };
+const defaultConfig = {
+  logPath: "../log",
+  mainFolderPath: "../data",
+  supportFolderPath: "../data/support",
+  periodicFolderPath: "../data/periodic"
+};
 let config = defaultConfig;
 try {
   if (!fs.existsSync(configPath)) {
@@ -22,9 +27,15 @@ try {
   // Use defaults if file is missing or invalid
   config = defaultConfig;
 }
-const folderPath = config.folderPath || "/data";
 const logPath = config.logPath || "/log";
 const LOG_FILE = path.join(logPath, 'main.log');
+
+// Support multiple data folders (main, support, periodic) with backward compatibility
+const folderMap = {
+  main: config.mainFolderPath,
+  support: config.supportFolderPath,
+  periodic: config.periodicFolderPath
+};
 
 // Logging utility
 function logMessage(functionName, message) {
@@ -41,11 +52,16 @@ function logMessage(functionName, message) {
   }
 }
 
-// Log all routes and absolute paths for folderPath and logPath on every request
+// Log all routes and absolute paths for the three data folders and logPath on every request
 app.use((req, res, next) => {
-  const absFolderPath = path.resolve(folderPath);
+  const absMainPath = path.resolve(folderMap.main);
+  const absSupportPath = path.resolve(folderMap.support);
+  const absPeriodicPath = path.resolve(folderMap.periodic);
   const absLogPath = path.resolve(logPath);
-  logMessage('route', `Request: ${req.method} ${req.originalUrl} | folderPath=${absFolderPath}, logPath=${absLogPath}`);
+  logMessage(
+    'route',
+    `Request: ${req.method} ${req.originalUrl} | main=${absMainPath}, support=${absSupportPath}, periodic=${absPeriodicPath}, logPath=${absLogPath}`
+  );
   next();
 });
 
@@ -77,11 +93,17 @@ app.get('/api/status', (req, res) => {
     return fileList;
   }
 
-  logMessage('/api/status', 'Started processing API request');
+  // Determine which folder to process based on query param ?type=main|support|periodic (default: main)
+  const type = (req.query.type || 'main').toLowerCase();
+  const validTypes = ['main', 'support', 'periodic'];
+  const selectedType = validTypes.includes(type) ? type : 'main';
+  const selectedFolder = folderMap[selectedType];
+
+  logMessage('/api/status', `Started processing API request for type=${selectedType} (path: ${selectedFolder})`);
   let files = [];
   try {
-    files = getAllFiles(folderPath);
-    logMessage('/api/status', `Found ${files.length} files in folderPath: ${folderPath}`);
+    files = getAllFiles(selectedFolder);
+    logMessage('/api/status', `Found ${files.length} files in folder: ${selectedFolder}`);
   } catch (err) {
     logMessage('/api/status', `ERROR: Failed to read folder: ${err.message}`);
     return res.status(500).json({ error: 'Failed to read folder' });
@@ -197,8 +219,14 @@ app.get('/view', (req, res) => {
   }
   // Security: only allow files inside the configured folder
   const absPath = path.resolve(filePath);
-  const absRoot = path.resolve(folderPath);
-  if (!absPath.startsWith(absRoot)) {
+  // Security: only allow files inside any of the configured folders
+  const allowedRoots = [
+    path.resolve(folderMap.main),
+    path.resolve(folderMap.support),
+    path.resolve(folderMap.periodic)
+  ];
+  const isAllowed = allowedRoots.some(root => absPath.startsWith(root));
+  if (!isAllowed) {
     return res.status(403).send('Access denied');
   }
   // Supported formats
@@ -271,8 +299,13 @@ app.get('/file', (req, res) => {
     return res.status(400).send('Missing file parameter');
   }
   const absPath = path.resolve(filePath);
-  const absRoot = path.resolve(folderPath);
-  if (!absPath.startsWith(absRoot)) {
+  const allowedRoots = [
+    path.resolve(folderMap.main),
+    path.resolve(folderMap.support),
+    path.resolve(folderMap.periodic)
+  ];
+  const isAllowed = allowedRoots.some(root => absPath.startsWith(root));
+  if (!isAllowed) {
     return res.status(403).send('Access denied');
   }
   if (!fs.existsSync(absPath)) {

@@ -1,4 +1,6 @@
 {
-  "folderPath": "../data",
-  "logPath": "../log"
+  "logPath": "../log",
+  "mainFolderPath": "../data/main",
+  "supportFolderPath": "../data/support",
+  "periodicFolderPath": "../data/periodic"
 }

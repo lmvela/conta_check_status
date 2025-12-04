@@ -1,9 +1,15 @@
 const basePath = window.location.pathname.startsWith('/conta_check_docs')
   ? '/conta_check_docs'
   : '';
+const TAB_LABELS = {
+  main: 'Main Files Status Grid',
+  support: 'Support Files Status Grid',
+  periodic: 'Periodic Invoices Status Grid'
+};
+let currentType = 'main';
 
-async function fetchStatus() {
-  const res = await fetch(`${basePath}/api/status`);
+async function fetchStatus(type = 'main') {
+  const res = await fetch(`${basePath}/api/status?type=${encodeURIComponent(type)}`);
   if (!res.ok) {
     document.getElementById('app').innerHTML = 'Failed to load data.';
     return null;
@@ -109,8 +115,8 @@ function renderUnprocessedFiles(unprocessedFiles) {
   return html;
 }
 
-async function main() {
-  const data = await fetchStatus();
+async function render() {
+  const data = await fetchStatus(currentType);
   if (!data) return;
   let html = `
     <div style="display: flex; flex-direction: column; align-items: stretch; width: 100%; max-width: 1100px; margin: 32px auto; padding: 0 16px;">
@@ -120,11 +126,39 @@ async function main() {
   `;
   document.getElementById('app').innerHTML = html;
 
-  // Update the title with the file counter
+  // Update the title with the file counter and active tab label
   const titleElem = document.getElementById('main-title');
   if (titleElem && Array.isArray(data.grid)) {
-    titleElem.textContent = `File Status Grid (${data.grid.length})`;
+    const label = TAB_LABELS[currentType] || 'File Status Grid';
+    titleElem.textContent = `${label} (${data.grid.length})`;
   }
 }
 
-main();
+// Initialize tab click handling
+function initTabs() {
+  const tabs = document.getElementById('tabs');
+  if (!tabs) return;
+  tabs.addEventListener('click', (e) => {
+    const btn = e.target.closest('.tab');
+    if (!btn) return;
+    const type = btn.getAttribute('data-type');
+    if (!type || type === currentType) return;
+
+    // Update active state
+    document.querySelectorAll('#tabs .tab').forEach(el => {
+      el.classList.toggle('active', el.getAttribute('data-type') === type);
+    });
+
+    currentType = type;
+    render();
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Ensure correct active tab on load
+  document.querySelectorAll('#tabs .tab').forEach(el => {
+    el.classList.toggle('active', el.getAttribute('data-type') === currentType);
+  });
+  initTabs();
+  render();
+});
