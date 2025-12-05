@@ -8,6 +8,16 @@ const TAB_LABELS = {
 };
 let currentType = 'main';
 
+function extractBadgeNumber(origName) {
+  const dotIdx = origName.lastIndexOf('.');
+  const usIdx = origName.lastIndexOf('_');
+  if (dotIdx === -1 || usIdx === -1 || dotIdx <= usIdx + 1) return null;
+  const seg = origName.slice(usIdx + 1, dotIdx);
+  const matches = [...seg.matchAll(/\d+-\d+/g)];
+  if (matches.length === 0) return null;
+  return matches[matches.length - 1][0].replace('-', ',');
+}
+
 async function fetchStatus(type = 'main') {
   const res = await fetch(`${basePath}/api/status?type=${encodeURIComponent(type)}`);
   if (!res.ok) {
@@ -60,6 +70,10 @@ function renderGrid({ months, columns, grid }) {
           const downloadName = base + '_readonly' + extension;
           icon = `<a href="${basePath}/file?file=${encodeURIComponent(cell.paths[0])}" download="${downloadName}" style="color:inherit;text-decoration:underline;">✔️</a>`;
           icon += `<div style="font-size:0.8em; color:#bbb; margin-top:2px;">${extension}</div>`;
+          const badge = extractBadgeNumber(origName);
+          if (badge) {
+            icon += `<div class="file-badge-number">${badge}</div>`;
+          }
         } else {
           const pathParts = cell.paths[0].split(/[\\/]/);
           const origName = pathParts[pathParts.length - 1];
@@ -67,6 +81,10 @@ function renderGrid({ months, columns, grid }) {
           const extension = dotIdx !== -1 ? origName.slice(dotIdx) : '';
           icon = `<a href="${basePath}/view?file=${encodeURIComponent(cell.paths[0])}" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline;">✔️</a>`;
           icon += `<div style="font-size:0.8em; color:#bbb; margin-top:2px;">${extension}</div>`;
+          const badge = extractBadgeNumber(origName);
+          if (badge) {
+            icon += `<div class="file-badge-number">${badge}</div>`;
+          }
         }
       } else {
         icon = '⚠️';

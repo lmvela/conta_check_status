@@ -134,3 +134,9 @@ tr:last-child td:last-child {
   border-color: #7c3aed;
   box-shadow: 0 2px 14px rgba(0,0,0,0.25);
 }
+
+.file-badge-number {
+  font-size: 0.75em;
+  color: #bbb;
+  margin-top: 2px;
+}
