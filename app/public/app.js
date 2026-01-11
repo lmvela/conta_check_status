@@ -105,7 +105,7 @@ function renderUnprocessedFiles(unprocessedFiles) {
   if (!unprocessedFiles || !unprocessedFiles.length) return '';
   let html = `
     <div class="unprocessed-section">
-      <h2 style="margin-top:2em; color:#fff; text-align:center;">Unprocessed Files</h2>
+      <h2 style="margin-top:2em; color:#fff; text-align:left;">Unprocessed Files</h2>
       <div class="unprocessed-list" style="background:#2d014d; border-radius:10px; padding:1em; margin-bottom:2em;">
         <table style="width:100%; border-collapse:collapse;">
           <thead>
@@ -137,7 +137,7 @@ async function render() {
   const data = await fetchStatus(currentType);
   if (!data) return;
   let html = `
-    <div style="display: flex; flex-direction: column; align-items: stretch; width: 100%; max-width: 1100px; margin: 32px auto; padding: 0 16px;">
+    <div style="display: flex; flex-direction: column; align-items: flex-start; width: 100%; max-width: 1100px; margin: 32px 0 32px 32px; padding: 0 16px;">
       ${renderGrid(data)}
       ${renderUnprocessedFiles(data.unprocessedFiles)}
     </div>
