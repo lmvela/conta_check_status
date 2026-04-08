@@ -105,7 +105,7 @@ app.get('/api/status', (req, res) => {
 
   // Determine which folder to process based on query param ?type=main|support|periodic (default: main)
   const type = (req.query.type || 'main').toLowerCase();
-  const validTypes = ['main', 'support', 'periodic'];
+  const validTypes = ['main', 'extractentries', 'support', 'periodic', 'investment'];
   const selectedType = validTypes.includes(type) ? type : 'main';
   const selectedFolder = folderMap[selectedType];
 
