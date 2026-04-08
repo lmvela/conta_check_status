@@ -69,20 +69,15 @@ Edit `config/config.json`. Example:
 
 ```json
 {
-  "folderPath": "../data",
   "logPath": "../log",
-  "mainFolderPath": "../data",
-  "supportFolderPath": "../data/support",
-  "periodicFolderPath": "../data/periodic"
+  "mainFolderPath": "../../conta_archivos/archive/archive_main",
+  "extractEntriesFolderPath": "../../conta_archivos/archive/archive_extract_entries",
+  "periodicFolderPath": "../../conta_archivos/archive/archive_periodic",
+  "supportFolderPath": "../../conta_archivos/archive/archive_support",
+  "investmentFolderPath": "../../conta_archivos/archive/archive_investment"
 }
+
 ```
-
-- mainFolderPath: Folder for the Main tab
-- supportFolderPath: Folder for the Support tab
-- periodicFolderPath: Folder for the Periodic tab
-- logPath: Directory where `main.log` is written
-- folderPath: Legacy key retained for compatibility; the app uses the three specific keys above. If present, it may mirror `mainFolderPath`.
-
 Notes:
 - Relative paths are resolved on the server side.
 - The server auto-creates `config/config.json` with sensible defaults if it does not exist.

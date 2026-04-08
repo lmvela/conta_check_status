@@ -10,10 +10,13 @@ const configDir = '../config';
 const configPath = '../config/config.json';
 const defaultConfig = {
   logPath: "../log",
-  mainFolderPath: "../data",
-  supportFolderPath: "../data/support",
-  periodicFolderPath: "../data/periodic"
-};
+  mainFolderPath:  "../../conta_archivos/archive/archive_main",
+  extractEntriesFolderPath: "../../conta_archivos/archive/archive_extract_entries",
+  periodicFolderPath: "../../conta_archivos/archive/archive_periodic",
+  supportFolderPath: "../../conta_archivos/archive/archive_support",
+  investmentFolderPath: "../../conta_archivos/archive/archive_investment"
+}
+
 let config = defaultConfig;
 try {
   if (!fs.existsSync(configPath)) {
@@ -31,10 +34,17 @@ const logPath = config.logPath || "/log";
 const LOG_FILE = path.join(logPath, 'main.log');
 
 // Support multiple data folders (main, support, periodic) with backward compatibility
+//       1: Documentos con saldo final y movimientos a extraer (Extractos mensuales)
+//       2: Documentos de soporte con movimientos a extraer, (Extractos tarjetas, eCard, Bizum)
+//       3: Documentos gastos recurrentes (nomina, domiciliaciones servicios, telefono, luz, agua, gas, ...)
+//       4: Documentos secundarios, solo clasificar (impuestos, liquidaciones, transferencias, ...)
+//       5: Documentos movimientos inversion acciones, degiro, trader, etc
 const folderMap = {
   main: config.mainFolderPath,
+  extractentries: config.extractEntriesFolderPath,
+  periodic: config.periodicFolderPath,
   support: config.supportFolderPath,
-  periodic: config.periodicFolderPath
+  investment: config.investmentFolderPath
 };
 
 // Logging utility

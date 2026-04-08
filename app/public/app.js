@@ -1,11 +1,7 @@
 const basePath = window.location.pathname.startsWith('/conta_check_docs')
   ? '/conta_check_docs'
   : '';
-const TAB_LABELS = {
-  main: 'Main Files Status Grid',
-  support: 'Support Files Status Grid',
-  periodic: 'Periodic Invoices Status Grid'
-};
+
 let currentType = 'main';
 
 function extractBadgeNumber(origName) {
@@ -86,6 +82,33 @@ function renderGrid({ months, columns, grid }) {
             icon += `<div class="file-badge-number">${badge}</div>`;
           }
         }
+      } else if (cell.count === 2) {
+        // Two documents: show two check icons with both links, no warning
+        cellClass = 'ok';
+        const linkParts = cell.paths.map(p => {
+          const ext = p.split('.').pop().toLowerCase();
+          const pathParts = p.split(/[\\/]/);
+          const origName = pathParts[pathParts.length - 1];
+          const dotIdx = origName.lastIndexOf('.');
+          const extension = dotIdx !== -1 ? origName.slice(dotIdx) : '';
+          let linkHtml;
+          if (ext === 'xls' || ext === 'xlsx') {
+            const base = dotIdx !== -1 ? origName.slice(0, dotIdx) : origName;
+            const extensionOnly = dotIdx !== -1 ? origName.slice(dotIdx) : '';
+            const downloadName = base + '_readonly' + extensionOnly;
+            linkHtml = `<a href="${basePath}/file?file=${encodeURIComponent(p)}" download="${downloadName}" style="color:inherit;text-decoration:underline;">✔️</a>`;
+          } else {
+            linkHtml = `<a href="${basePath}/view?file=${encodeURIComponent(p)}" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline;">✔️</a>`;
+          }
+          let extra = `<div style="font-size:0.8em; color:#bbb; margin-top:2px;">${extension}</div>`;
+          const badge = extractBadgeNumber(origName);
+          if (badge) {
+            extra += `<div class="file-badge-number">${badge}</div>`;
+          }
+          return linkHtml + extra;
+        });
+        icon = linkParts.join('<hr style="border:none;border-top:1px solid #555;margin:4px 0;">');
+        title = cell.paths.join('\n');
       } else {
         icon = '⚠️';
         cellClass = 'warn';
@@ -143,13 +166,6 @@ async function render() {
     </div>
   `;
   document.getElementById('app').innerHTML = html;
-
-  // Update the title with the file counter and active tab label
-  const titleElem = document.getElementById('main-title');
-  if (titleElem && Array.isArray(data.grid)) {
-    const label = TAB_LABELS[currentType] || 'File Status Grid';
-    titleElem.textContent = `${label} (${data.grid.length})`;
-  }
 }
 
 // Initialize tab click handling
