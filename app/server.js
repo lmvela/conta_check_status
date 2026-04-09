@@ -65,12 +65,14 @@ function logMessage(functionName, message) {
 // Log all routes and absolute paths for the three data folders and logPath on every request
 app.use((req, res, next) => {
   const absMainPath = path.resolve(folderMap.main);
-  const absSupportPath = path.resolve(folderMap.support);
+  const absExtractentriesPath = path.resolve(folderMap.extractentries);
   const absPeriodicPath = path.resolve(folderMap.periodic);
+  const absSupportPath = path.resolve(folderMap.support);
+  const absInvestmentPath = path.resolve(folderMap.investment);
   const absLogPath = path.resolve(logPath);
   logMessage(
     'route',
-    `Request: ${req.method} ${req.originalUrl} | main=${absMainPath}, support=${absSupportPath}, periodic=${absPeriodicPath}, logPath=${absLogPath}`
+    `Request: ${req.method} ${req.originalUrl} | main=${absMainPath}, extractentries=${absExtractentriesPath}, periodic=${absPeriodicPath}, support=${absSupportPath}, investment=${absInvestmentPath}, logPath=${absLogPath}`
   );
   next();
 });
@@ -232,8 +234,10 @@ app.get('/view', (req, res) => {
   // Security: only allow files inside any of the configured folders
   const allowedRoots = [
     path.resolve(folderMap.main),
+    path.resolve(folderMap.extractentries),
+    path.resolve(folderMap.periodic),
     path.resolve(folderMap.support),
-    path.resolve(folderMap.periodic)
+    path.resolve(folderMap.investment)
   ];
   const isAllowed = allowedRoots.some(root => absPath.startsWith(root));
   if (!isAllowed) {
@@ -311,8 +315,10 @@ app.get('/file', (req, res) => {
   const absPath = path.resolve(filePath);
   const allowedRoots = [
     path.resolve(folderMap.main),
+    path.resolve(folderMap.extractentries),
+    path.resolve(folderMap.periodic),
     path.resolve(folderMap.support),
-    path.resolve(folderMap.periodic)
+    path.resolve(folderMap.investment)
   ];
   const isAllowed = allowedRoots.some(root => absPath.startsWith(root));
   if (!isAllowed) {
