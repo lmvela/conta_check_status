@@ -70,11 +70,7 @@ Edit `config/config.json`. Example:
 ```json
 {
   "logPath": "../log",
-  "mainFolderPath": "../../conta_archivos/archive/archive_main",
-  "extractEntriesFolderPath": "../../conta_archivos/archive/archive_extract_entries",
-  "periodicFolderPath": "../../conta_archivos/archive/archive_periodic",
-  "supportFolderPath": "../../conta_archivos/archive/archive_support",
-  "investmentFolderPath": "../../conta_archivos/archive/archive_investment"
+  "archiveFolderPath": "../../conta_archivos/archive",
 }
 
 ```

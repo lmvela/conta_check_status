@@ -40,11 +40,11 @@ const LOG_FILE = path.join(logPath, 'main.log');
 //       4: Documentos secundarios, solo clasificar (impuestos, liquidaciones, transferencias, ...)
 //       5: Documentos movimientos inversion acciones, degiro, trader, etc
 const folderMap = {
-  main: config.mainFolderPath,
-  extractentries: config.extractEntriesFolderPath,
-  periodic: config.periodicFolderPath,
-  support: config.supportFolderPath,
-  investment: config.investmentFolderPath
+  main: path.join(config.archiveFolderPath, "archive_main"),
+  extractentries: path.join(config.archiveFolderPath, "archive_extractentries"),
+  periodic: path.join(config.archiveFolderPath, "archive_periodic"),
+  support: path.join(config.archiveFolderPath, "archive_support"),
+  investment: path.join(config.archiveFolderPath, "archive_investment"),
 };
 
 // Logging utility
