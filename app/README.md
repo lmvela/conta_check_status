@@ -1,43 +1,184 @@
-# File Status Grid Web App (Multi-Folder, 3 Tabs)
+# Conta Check Status
 
-A one-page web application that scans configured folders (and their subfolders) for files following a pattern and displays a monthly status grid. The UI provides three tabs that render the same grid logic for different folders.
+A Node.js/Express web application that scans configured archive folders (and their subfolders) and shows, in a grid, which monthly documents exist or are missing.  
+It is designed to work with multiple logical folders (main, support, periodic, extract entries, investment) and to be served standalone or behind a reverse proxy (e.g. `/conta_check_docs`).
 
-- Tabs:
-  - Main Files Status Grid
-  - Support Files Status Grid
-  - Periodic Invoices Status Grid
+---
 
-Each tab reads a different configured folder.
+## 1. Features
 
-## Features
+- Scan one or several archive folders and all their subfolders.
+- Detect files following the naming pattern:
 
-- Scans a folder and all subfolders for files named as `YYYYMM_Description.ext`
-  - Examples: `202401_sales.csv`, `202312_Receipts_January.pdf`, `202402_Invoices_Company____v2.xlsx`
-- Valid extensions: `txt`, `csv`, `pdf`, `png`, `jpg`, `jpeg`, `bmp`, `xls`, `xlsx`
-- Dynamically creates columns for each unique `Description` found in filenames
-- Displays a grid:
-  - Rows: months (oldest at bottom, newest at top; grid is rendered newest first)
-  - Columns: `Description` values
-- Icons:
-  - ✔️ one file present
-  - ❌ no file
-  - ⚠️ multiple files
-- Hover over ✔️ or ⚠️ to view the file path(s)
-- For ✔️:
-  - Text/CSV/PDF/Image: opens a viewer in a new tab
-  - Excel (.xls, .xlsx): downloads a copy marked `_readonly`
-- Shows a list of unprocessed files at the end (invalid format or extension)
-- Modern UI with dark theme and tab bar
-- Title displays active tab and number of rows
+  ```text
+  YYYYMM_Description_Suffix....ext
+  ```
 
-## Tabs and API
+  Examples:
 
-- The frontend has a tab bar (Main, Support, Periodic).
-- Clicking a tab loads data from the same endpoint with a query parameter:
-  - GET `/api/status?type=main|support|periodic`
-  - Default: `type=main`
+  - `202401_Sales_January.pdf`
+  - `202312_Receipts_Supermarket____v2.xlsx`
+  - `202402_Payroll_Company.txt`
 
-Response JSON shape (unchanged across tabs):
+- Supported extensions:
+
+  - `txt`, `csv`, `pdf`, `png`, `jpg`, `jpeg`, `bmp`, `xls`, `xlsx`
+
+- Build a **status grid**:
+
+  - Rows: months (YYYYMM)
+  - Columns: distinct descriptions derived from the file name
+  - Cell content:
+    - ✔️ one file present
+    - ⚠️ more than one file
+    - ❌ no file
+
+- Hover over ✔️ or ⚠️ to see full paths and extensions.
+- For each cell with files you can open a viewer or download the document:
+  - `.txt`, `.csv`: shown as formatted text in the browser
+  - `.pdf`: embedded viewer
+  - `.png`, `.jpg`, `.jpeg`, `.bmp`: image viewer
+  - `.xls`, `.xlsx`: downloaded (read-only usage)
+- Separate logical “types” of archive:
+
+  - `main`
+  - `extractentries`
+  - `support`
+  - `periodic`
+  - `investment`
+
+- Backend logs every request and main processing steps to a log file.
+
+---
+
+## 2. Architecture Overview
+
+The project consists of a small Express backend and a static frontend:
+
+- **Backend (`app/server.js`)**
+  - HTTP server on port `9000` by default.
+  - Serves the SPA frontend from `app/public`.
+  - API:
+    - `GET /api/status?type=main|extractentries|support|periodic|investment`
+    - `GET /view?file=...` HTML viewer for a given file
+    - `GET /file?file=...` raw file streaming for embedding/downloading
+  - Reads its configuration from `config/config.json` (auto-creates file with defaults if missing).
+  - Writes logs to a configurable log directory.
+
+- **Frontend (`app/public/`)**
+  - Single-page application (HTML + JS) that:
+    - Renders a tabbed UI (for the different types of folders).
+    - Calls `/api/status?type=...` and renders the status grid.
+    - Opens viewers/downloads when the user clicks a cell with documents.
+
+---
+
+## 3. Configuration
+
+Configuration is read from `config/config.json` relative to `app/server.js`.  
+If the file does not exist, it is automatically created with defaults.
+
+### 3.1. Default config
+
+By default, the server uses:
+
+```json
+{
+  "logPath": "../log",
+  "mainFolderPath": "../../conta_archivos/archive/archive_main",
+  "extractEntriesFolderPath": "../../conta_archivos/archive/archive_extract_entries",
+  "periodicFolderPath": "../../conta_archivos/archive/archive_periodic",
+  "supportFolderPath": "../../conta_archivos/archive/archive_support",
+  "investmentFolderPath": "../../conta_archivos/archive/archive_investment"
+}
+```
+
+> Note: these defaults are oriented to the original environment of the project.  
+> Adapt the paths to your own folder structure.
+
+### 3.2. Archive root and `archive_main`
+
+The backend now supports a common archive root via `archiveFolderPath`.  
+Internally, the mapping used is:
+
+```js
+const folderMap = {
+  main: config.archiveFolderPath
+    ? path.join(config.archiveFolderPath, "archive_main")
+    : config.mainFolderPath,
+  extractentries: config.extractEntriesFolderPath,
+  periodic: config.periodicFolderPath,
+  support: config.supportFolderPath,
+  investment: config.investmentFolderPath
+};
+```
+
+This means:
+
+- If `archiveFolderPath` is defined in `config/config.json`, the **main** folder becomes:
+
+  ```text
+  <archiveFolderPath>/archive_main
+  ```
+
+- If `archiveFolderPath` is **not** defined, the server falls back to the old behavior and uses `mainFolderPath`.
+
+#### Example config using a common root
+
+```json
+{
+  "logPath": "../log",
+  "archiveFolderPath": "../../conta_archivos/archive",
+  "extractEntriesFolderPath": "../../conta_archivos/archive/archive_extract_entries",
+  "periodicFolderPath": "../../conta_archivos/archive/archive_periodic",
+  "supportFolderPath": "../../conta_archivos/archive/archive_support",
+  "investmentFolderPath": "../../conta_archivos/archive/archive_investment"
+}
+```
+
+With this configuration:
+
+- `type=main` → `../../conta_archivos/archive/archive_main`
+- `type=extractentries` → `../../conta_archivos/archive/archive_extract_entries`
+- `type=support` → `../../conta_archivos/archive/archive_support`
+- `type=periodic` → `../../conta_archivos/archive/archive_periodic`
+- `type=investment` → `../../conta_archivos/archive/archive_investment`
+
+### 3.3. Log directory
+
+`logPath` indicates where the main log file will be written. The server:
+
+- Ensures the directory exists (creates it if needed).
+- Writes a log file named `main.log`:
+
+  ```js
+  const LOG_FILE = path.join(logPath, 'main.log');
+  ```
+
+Logs include route calls, folder scans, regex matches, grid construction, and errors.
+
+---
+
+## 4. API Details
+
+### 4.1. `GET /api/status?type=...`
+
+Returns status information for the requested folder type.
+
+**Query parameter:**
+
+- `type` (optional): one of
+
+  - `main`
+  - `extractentries`
+  - `support`
+  - `periodic`
+  - `investment`
+
+  If omitted or invalid, defaults to `main`.
+
+**Response JSON:**
+
 ```json
 {
   "months": ["202401", "202402", "..."],
@@ -53,71 +194,202 @@ Response JSON shape (unchanged across tabs):
 }
 ```
 
-## File Viewer
+- `months`: sorted list of all months in the data (the frontend may display newest first).
+- `columns`: each unique description derived from the filename.
+- `grid`: one entry per month, with each description as a property.
+  - `count`: 0, 1, or >1
+  - `paths`: absolute file paths discovered.
+  - `exts`: corresponding extensions.
+- `unprocessedFiles`: full paths for files that:
+  - do not match the naming pattern `YYYYMM_Description_...ext`, or
+  - have an unsupported extension.
 
-- Supported in-browser views:
-  - `.txt`, `.csv` (text)
-  - `.pdf` (embedded)
-  - `.png`, `.jpg`, `.jpeg`, `.bmp` (image)
-- Excel `.xls`/`.xlsx`: offered as download (`_readonly` suffix)
+**Filename pattern (server-side):**
 
-Security: The backend only serves/view files located inside any of the configured data roots (Main/Support/Periodic).
+The code uses a regex roughly equivalent to:
 
-## Configuration
-
-Edit `config/config.json`. Example:
-
-```json
-{
-  "logPath": "../log",
-  "archiveFolderPath": "../../conta_archivos/archive",
-}
-
+```regex
+^(\d{6})_([A-Za-z]+)_(.*?)(?:____.*)?\.(\w+)$
 ```
-Notes:
-- Relative paths are resolved on the server side.
-- The server auto-creates `config/config.json` with sensible defaults if it does not exist.
 
-## Setup
+Where:
 
-1) Install dependencies:
-```
+- Group 1: `YYYYMM`
+- Group 2: first description token
+- Group 3: the rest of the description
+- Group 4: extension
+
+### 4.2. `GET /view?file=...`
+
+Opens an HTML-based viewer for a given file path.
+
+- `file` is an absolute path as returned by `/api/status`.
+- **Security**: the path must be inside one of the configured data roots:
+
+  - `folderMap.main`
+  - `folderMap.extractentries`
+  - `folderMap.periodic`
+  - `folderMap.support`
+  - `folderMap.investment`
+
+If the path is outside these roots, the server responds with `403 Access denied`.
+
+Supported behavior:
+
+- `.txt`, `.csv`: displayed as HTML `<pre>` with dark theme.
+- `.pdf`: embedded via `<embed>`.
+- Images (`.png`, `.jpg`, `.jpeg`, `.bmp`): displayed via `<img>`.
+- `.xls`, `.xlsx`:
+  - Loaded in the browser using SheetJS (`xlsx.full.min.js`).
+  - Rendered as HTML tables in the viewer page.
+
+### 4.3. `GET /file?file=...`
+
+Streams the raw file content. Used by the `/view` page for embedding or downloading.
+
+- Same security check as `/view`.
+- Content-Type inferred with `mime-types`.
+- If the file does not exist → `404`.
+
+---
+
+## 5. Frontend Usage
+
+The frontend is served statically from `app/public`:
+
+- Main page: `http://localhost:9000/`
+- Renders:
+
+  - Tab bar for each type of folder (e.g. Main, Support, Periodic, Extract Entries, Investment).
+  - Status grid using the `/api/status` endpoint.
+  - Clickable cells for viewing/downloading documents.
+
+Typical flow:
+
+1. User selects a tab (e.g. **Main**).
+2. Frontend issues `GET /api/status?type=main`.
+3. Data is rendered into a grid.
+4. User clicks a cell with ✔️ or ⚠️:
+   - If there is exactly one file, the viewer is opened directly.
+   - If there are multiple, the UI may let the user choose which one to open/download.
+
+---
+
+## 6. Running the Application
+
+### 6.1. Local (Node.js)
+
+Requirements:
+
+- Node.js (LTS recommended)
+- npm
+
+Steps:
+
+```bash
+cd app
 npm install
-```
-
-2) Start the server:
-```
 npm start
 ```
 
-3) Visit:
-- http://localhost:9000
+By default the server listens on:
 
-4) Place files in the configured folders (Main/Support/Periodic) following the naming pattern.
+- `http://localhost:9000/`
 
-## File Pattern
+Place your documents in the configured archive folders (`archive_main`, `archive_support`, etc.), adjusting `config/config.json` as needed.
 
-- Name files as: `YYYYMM_Description.ext`
-  - `YYYYMM`: year+month (6 digits)
-  - `Description`: free text used as a column name (may include underscores)
-  - `ext`: one of `txt,csv,pdf,png,jpg,jpeg,bmp,xls,xlsx`
-- Files not matching the pattern or extension are listed as “Unprocessed Files”.
+### 6.2. With Docker / docker-compose
 
-## Deployment under a subpath
+The repository includes a `Dockerfile` and `docker-compose.yml` at the project root.
 
-Frontend links respect a base path when served under `/conta_check_docs`. If deploying behind a reverse proxy with that subpath, the UI will adapt its fetch and links.
+Typical usage (from the project root):
 
-## Project Structure
+```bash
+docker-compose up --build
+```
 
-- `server.js` — Node.js/Express backend
-  - GET `/api/status?type=main|support|periodic`
-  - GET `/view?file=...` (HTML viewer)
-  - GET `/file?file=...` (raw file for embedding/downloading)
-- `public/` — Frontend assets (HTML, JS, CSS)
-- `config/config.json` — Configuration
-- `data/` — Example location for your files (match the configured folders)
-- `log/` — Log output directory (configurable via `logPath`)
+- The container will run the Node.js server inside.
+- Mount or copy your archive folders into the container according to your `config/config.json` paths.
+- Expose the container port (by default `9000`) to your host.
 
-## License
+Consult `docker-compose.yml` for exact volume and port mappings and adjust them to match your environment.
+
+---
+
+## 7. Deployment Behind a Reverse Proxy
+
+The application can be served under a subpath such as `/conta_check_docs`. Important details:
+
+- The backend computes an `externalBaseUrl` per request using:
+  - `x-forwarded-proto`
+  - `x-forwarded-host`
+- The frontend builds some links using `req.externalBaseUrl` to keep URLs consistent when running behind a reverse proxy.
+
+When deploying:
+
+1. Configure your reverse proxy (nginx, Apache, Traefik, etc.) to route:
+   - `/conta_check_docs/` → backend server (`http://backend:9000/`)
+2. Ensure the proxy sets appropriate `X-Forwarded-*` headers:
+   - `X-Forwarded-Proto`
+   - `X-Forwarded-Host`
+3. Verify that:
+   - `/conta_check_docs/` loads the SPA.
+   - API calls go to `/conta_check_docs/api/status?...`.
+   - File viewer links also use the same base path.
+
+---
+
+## 8. Logs and Troubleshooting
+
+### 8.1. Log location
+
+- Default log file: `../log/main.log` (relative to `app/server.js`), or as defined by `logPath`.
+- Typical events logged:
+  - Incoming route (`/api/status`, `/view`, `/file`) plus resolved paths.
+  - Directory scans (`getAllFiles`).
+  - Regex matches and unmatched files.
+  - Grid generation details.
+  - Errors reading directories or files.
+
+### 8.2. Common issues
+
+- **`The "path" argument must be of type string. Received undefined`**  
+  Usually indicates a missing or mis-typed path in `config/config.json`.  
+  Check:
+
+  - `archiveFolderPath`
+  - `mainFolderPath`
+  - `extractEntriesFolderPath`
+  - `periodicFolderPath`
+  - `supportFolderPath`
+  - `investmentFolderPath`
+
+  Ensure all required folder paths are strings and point to real directories.
+
+- **Access denied (403) on viewer/file endpoints**  
+  The file is outside of the configured roots.  
+  Make sure the archive folders in `config/config.json` correctly cover your documents.
+
+---
+
+## 9. Project Structure
+
+At the repository root:
+
+- `Dockerfile` – container build definition.
+- `docker-compose.yml` – optional orchestration for the app.
+- `app/`
+  - `server.js` – Express backend.
+  - `package.json`, `package-lock.json` – Node.js dependencies.
+  - `public/` – static frontend (HTML, JS, CSS).
+  - `README.md` – this document.
+- `config/`
+  - `config.json` – runtime configuration (auto-created on first run).
+- `log/`
+  - `main.log` and other log files (path configurable via `logPath`).
+
+---
+
+## 10. License
 
 MIT

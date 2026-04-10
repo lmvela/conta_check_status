@@ -5,33 +5,52 @@ const path = require('path');
 const app = express();
 const PORT = 9000;
 
-// Load config from ./config/config.json, create with defaults if not found
-const configDir = '../config';
-const configPath = '../config/config.json';
-const defaultConfig = {
-  logPath: "../log",
-  mainFolderPath:  "../../conta_archivos/archive/archive_main",
-  extractEntriesFolderPath: "../../conta_archivos/archive/archive_extract_entries",
-  periodicFolderPath: "../../conta_archivos/archive/archive_periodic",
-  supportFolderPath: "../../conta_archivos/archive/archive_support",
-  investmentFolderPath: "../../conta_archivos/archive/archive_investment"
+function directoryExists(path) {
+  try {
+    return fs.statSync(path).isDirectory();
+  } catch (err) {
+    return false;
+  }
 }
 
-let config = defaultConfig;
-try {
-  if (!fs.existsSync(configPath)) {
-    if (!fs.existsSync(configDir)) {
-      fs.mkdirSync(configDir, { recursive: true });
-    }
-    fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2), 'utf8');
-  }
-  config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-} catch (err) {
-  // Use defaults if file is missing or invalid
-  config = defaultConfig;
+// Prepare log file
+let dirLog = '/log'
+if (!directoryExists(dirLog)){
+  dirLog = '../log'
 }
-const logPath = config.logPath || "/log";
-const LOG_FILE = path.join(logPath, 'main.log');
+if (!directoryExists(dirLog)){
+  console.log(`Debug: CREATING DirLog path: ${dirLog}`);
+  fs.mkdirSync(dirLog);
+}
+const LOG_FILE = path.join(dirLog, 'conta_check_status_main.log');
+if (!fs.existsSync(LOG_FILE)) {
+  fs.writeFileSync(LOG_FILE, '');
+}
+const absolutePathDirLog = path.resolve(dirLog);
+console.log(`Debug: DirLog absolute path: ${absolutePathDirLog}`);
+logMessage('Init', `Using LogFile: ${LOG_FILE}`)
+
+// Prepare config file
+let dirConfig = '/config';
+const defaultConfig = {
+  archiveFolderPath:  "../../conta_archivos/archive",
+}
+if (!directoryExists(dirConfig)){
+  dirConfig = '../config'
+}
+if (!directoryExists(dirConfig)){
+  console.log(`Debug: CREATING dirConfig path: ${dirConfig}`);  
+  fs.mkdirSync(dirConfig);
+}
+const absolutePathDirConfig = path.resolve(dirConfig);
+console.log(`Debug: Using DirConfig absolute path: ${absolutePathDirConfig}`);
+const CONFIG_FILE = path.join(dirConfig, 'conta_check_status_config.json');
+if (!fs.existsSync(CONFIG_FILE)) {
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(defaultConfig, null, 2), 'utf8');
+}
+let config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+logMessage('Init', `Using ConfigFile: ${CONFIG_FILE}`)
+logMessage('Init', `Using Config param, config.archiveFolderPath: ${config.archiveFolderPath}`)
 
 // Support multiple data folders (main, support, periodic) with backward compatibility
 //       1: Documentos con saldo final y movimientos a extraer (Extractos mensuales)
@@ -39,20 +58,20 @@ const LOG_FILE = path.join(logPath, 'main.log');
 //       3: Documentos gastos recurrentes (nomina, domiciliaciones servicios, telefono, luz, agua, gas, ...)
 //       4: Documentos secundarios, solo clasificar (impuestos, liquidaciones, transferencias, ...)
 //       5: Documentos movimientos inversion acciones, degiro, trader, etc
+logMessage('Init', `Loaded archiveFolderPath: ${config.archiveFolderPath}`)
+const basePath = config.archiveFolderPath || "/data_archive";
+logMessage('Init', `Using archiveFolderPath -> basePath: ${basePath}`)
 const folderMap = {
-  main: path.join(config.archiveFolderPath, "archive_main"),
-  extractentries: path.join(config.archiveFolderPath, "archive_extractentries"),
-  periodic: path.join(config.archiveFolderPath, "archive_periodic"),
-  support: path.join(config.archiveFolderPath, "archive_support"),
-  investment: path.join(config.archiveFolderPath, "archive_investment"),
+  main: path.join(basePath, "archive_main"),
+  extractentries: path.join(basePath, "archive_extractentries"),
+  periodic: path.join(basePath, "archive_periodic"),
+  support: path.join(basePath, "archive_support"),
+  investment: path.join(basePath, "archive_investment"),
 };
 
 // Logging utility
 function logMessage(functionName, message) {
   try {
-    if (!fs.existsSync(logPath)) {
-      fs.mkdirSync(logPath, { recursive: true });
-    }
     const timestamp = new Date().toISOString();
     const logLine = `[${timestamp}] [${functionName}] ${message}\n`;
     fs.appendFileSync(LOG_FILE, logLine, 'utf8');
@@ -69,10 +88,11 @@ app.use((req, res, next) => {
   const absPeriodicPath = path.resolve(folderMap.periodic);
   const absSupportPath = path.resolve(folderMap.support);
   const absInvestmentPath = path.resolve(folderMap.investment);
-  const absLogPath = path.resolve(logPath);
+  const absLogPath = path.resolve(LOG_FILE);
+  const absConfigPath = path.resolve(CONFIG_FILE);
   logMessage(
     'route',
-    `Request: ${req.method} ${req.originalUrl} | main=${absMainPath}, extractentries=${absExtractentriesPath}, periodic=${absPeriodicPath}, support=${absSupportPath}, investment=${absInvestmentPath}, logPath=${absLogPath}`
+    `Request: ${req.method} ${req.originalUrl} | main=${absMainPath}, extractentries=${absExtractentriesPath}, periodic=${absPeriodicPath}, support=${absSupportPath}, investment=${absInvestmentPath}, logPath=${absLogPath}, cfgPath=${absConfigPath}`
   );
   next();
 });
@@ -346,4 +366,5 @@ function escapeHtml(text) {
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
+  logMessage('app.Listen', `Server running on http://localhost:${PORT}`)
 });
