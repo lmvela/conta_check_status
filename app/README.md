@@ -208,8 +208,8 @@ Returns status information for the requested folder type.
 
 The code uses a regex roughly equivalent to:
 
-```regex
-^(\d{6})_([A-Za-z]+)_(.*?)(?:____.*)?\.(\w+)$
+```
+re^([^_]+)_([^_]+)_(.+?)_d_(\d+)_t_([^\.]+)\.([^.]+)$
 ```
 
 Where:

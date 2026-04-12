@@ -108,6 +108,20 @@ app.use((req, res, next) => {
 // Valid file extensions
 const validExtensions = ['txt', 'csv', 'pdf', 'png', 'jpg', 'jpeg', 'bmp', 'xls', 'xlsx'];
 
+function parseCustomNumber(str) {
+  if (typeof str !== 'string') return NaN;
+
+  const isNegative = str.startsWith('n');
+
+  const cleaned = str
+    .replace(/^n/, '')   // remove leading 'n'
+    .replace('c', '.');  // replace decimal marker
+
+  const num = Number(cleaned);
+
+  return isNaN(num) ? NaN : (isNegative ? -num : num);
+}
+
  // API endpoint
 app.get('/api/status', (req, res) => {
   // Recursively collect all files in folderPath and subfolders
@@ -142,7 +156,7 @@ app.get('/api/status', (req, res) => {
   }
 
   // Pattern: YYYYMM_Description.ext
-  const pattern = /^(\d{6})_([A-Za-z]+)_(.*?)(?:____.*)?\.(\w+)$/;
+  const pattern = /^([^_]+)_([^_]+)_(.+?)_d_(\d+)_t_([^\.]+)\.([^.]+)$/;
 
   // Process files
   const fileData = [];
@@ -151,13 +165,15 @@ app.get('/api/status', (req, res) => {
     const file = path.basename(fullPath);
     const match = file.match(pattern);
     if (match) {
-      logMessage('/api/status', `Match Regex: ${file} (month: ${match[1]}, desc: ${match[2]} ${match[3]}, ext: ${match[4]})`);
-      if (validExtensions.includes(match[4].toLowerCase())) {
+      logMessage('/api/status', `Match Regex: ${file} (month: ${match[1]}, desc: ${match[2]} ${match[3]}, fecha:${match[4]}, total:${match[5]}, ext: ${match[6]})`);
+      if (validExtensions.includes(match[6].toLowerCase())) {
         fileData.push({
           file,
           ym: match[1],
           description: match[2] + "_" + match[3],
-          ext: match[4],
+          date: match[4],
+          total: parseCustomNumber(match[5]),
+          ext: match[6],
           fullPath,
           public_url: `${req.externalBaseUrl}/conta_check_docs/api/status`
         });

@@ -4,14 +4,15 @@ const basePath = window.location.pathname.startsWith('/conta_check_docs')
 
 let currentType = 'main';
 
-function extractBadgeNumber(origName) {
-  const dotIdx = origName.lastIndexOf('.');
-  const usIdx = origName.lastIndexOf('_');
-  if (dotIdx === -1 || usIdx === -1 || dotIdx <= usIdx + 1) return null;
-  const seg = origName.slice(usIdx + 1, dotIdx);
-  const matches = [...seg.matchAll(/\d+-\d+/g)];
-  if (matches.length === 0) return null;
-  return matches[matches.length - 1][0].replace('-', ',');
+function extractBadgeNumber(str) {
+  const match = str.match(/_t_([n]?\d+c\d+)/);
+  if (!match) return null;
+
+  let value = match[1];
+
+  return value
+    .replace(/^n/, '-')  // leading n → -
+    .replace('c', ',');  // c → ,
 }
 
 async function fetchStatus(type = 'main') {
