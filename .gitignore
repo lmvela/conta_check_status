@@ -20,4 +20,5 @@ log/
 config/
 
 *.internal_info
+.vs/
 

@@ -67,6 +67,7 @@ const folderMap = {
   periodic: path.join(basePath, "archive_periodic"),
   support: path.join(basePath, "archive_support"),
   investment: path.join(basePath, "archive_investment"),
+  annual: path.join(basePath, "archive_annual"),
 };
 
 // Logging utility
@@ -88,11 +89,12 @@ app.use((req, res, next) => {
   const absPeriodicPath = path.resolve(folderMap.periodic);
   const absSupportPath = path.resolve(folderMap.support);
   const absInvestmentPath = path.resolve(folderMap.investment);
+  const absAnnualPath = path.resolve(folderMap.annual);
   const absLogPath = path.resolve(LOG_FILE);
   const absConfigPath = path.resolve(CONFIG_FILE);
   logMessage(
     'route',
-    `Request: ${req.method} ${req.originalUrl} | main=${absMainPath}, extractentries=${absExtractentriesPath}, periodic=${absPeriodicPath}, support=${absSupportPath}, investment=${absInvestmentPath}, logPath=${absLogPath}, cfgPath=${absConfigPath}`
+    `Request: ${req.method} ${req.originalUrl} | main=${absMainPath}, extractentries=${absExtractentriesPath}, periodic=${absPeriodicPath}, support=${absSupportPath}, investment=${absInvestmentPath}, annual=${absAnnualPath}, logPath=${absLogPath}, cfgPath=${absConfigPath}`
   );
   next();
 });
@@ -141,7 +143,7 @@ app.get('/api/status', (req, res) => {
 
   // Determine which folder to process based on query param ?type=main|support|periodic (default: main)
   const type = (req.query.type || 'main').toLowerCase();
-  const validTypes = ['main', 'extractentries', 'support', 'periodic', 'investment'];
+  const validTypes = ['main', 'extractentries', 'support', 'periodic', 'investment', 'annual'];
   const selectedType = validTypes.includes(type) ? type : 'main';
   const selectedFolder = folderMap[selectedType];
 
@@ -273,7 +275,8 @@ app.get('/view', (req, res) => {
     path.resolve(folderMap.extractentries),
     path.resolve(folderMap.periodic),
     path.resolve(folderMap.support),
-    path.resolve(folderMap.investment)
+    path.resolve(folderMap.investment),
+    path.resolve(folderMap.annual)
   ];
   const isAllowed = allowedRoots.some(root => absPath.startsWith(root));
   if (!isAllowed) {
@@ -354,7 +357,8 @@ app.get('/file', (req, res) => {
     path.resolve(folderMap.extractentries),
     path.resolve(folderMap.periodic),
     path.resolve(folderMap.support),
-    path.resolve(folderMap.investment)
+    path.resolve(folderMap.investment),
+    path.resolve(folderMap.annual)
   ];
   const isAllowed = allowedRoots.some(root => absPath.startsWith(root));
   if (!isAllowed) {
