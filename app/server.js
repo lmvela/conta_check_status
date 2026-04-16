@@ -125,7 +125,7 @@ function parseCustomNumber(str) {
 }
 
  // API endpoint
-app.get('/api/status', (req, res) => {
+ app.get('/api/status', (req, res) => {
   // Recursively collect all files in folderPath and subfolders
   function getAllFiles(dir, fileList = []) {
     logMessage('getAllFiles', `Reading directory: ${dir}`);
@@ -254,9 +254,94 @@ app.get('/api/status', (req, res) => {
     grid,
     unprocessedFiles
   });
-});
+ });
 
-const mime = require('mime-types');
+ // New endpoint for Totals tab: sums totals per month in archive_main
+ app.get('/api/totals', (req, res) => {
+   // Work only on the "main" folder as requested
+   const selectedFolder = folderMap.main;
+   logMessage('/api/totals', `Started processing /api/totals for folder: ${selectedFolder}`);
+
+   // Helper: recursively collect all files under selectedFolder
+   function getAllFiles(dir, fileList = []) {
+     logMessage('getAllFiles_totals', `Reading directory: ${dir}`);
+     const entries = fs.readdirSync(dir, { withFileTypes: true });
+     entries.forEach(entry => {
+       const fullPath = path.join(dir, entry.name);
+       if (entry.isDirectory()) {
+         getAllFiles(fullPath, fileList);
+       } else if (entry.isFile()) {
+         fileList.push(fullPath);
+       }
+     });
+     return fileList;
+   }
+
+   let files = [];
+   try {
+     files = getAllFiles(selectedFolder);
+     logMessage('/api/totals', `Found ${files.length} files in folder: ${selectedFolder}`);
+   } catch (err) {
+     logMessage('/api/totals', `ERROR: Failed to read folder: ${err.message}`);
+     return res.status(500).json({ error: 'Failed to read folder' });
+   }
+
+   // Use same filename pattern as /api/status:
+   // YYYYMM_desc1_desc2_d_FECHA_t_TOTAL.ext
+   const pattern = /^([^_]+)_([^_]+)_(.+?)_d_(\d+)_t_([^\.]+)\.([^.]+)$/;
+
+   const totalsByMonth = {};
+   const unprocessedFiles = [];
+
+   files.forEach(fullPath => {
+     const file = path.basename(fullPath);
+     const match = file.match(pattern);
+     if (!match) {
+       unprocessedFiles.push(fullPath);
+       logMessage('/api/totals', `Unmatch Regex: ${file}`);
+       return;
+     }
+
+     const ym = match[1];       // YYYYMM
+     const totalStr = match[5]; // encoded total, e.g. 123c45 or n123c45
+     const ext = match[6];
+
+     if (!validExtensions.includes(ext.toLowerCase())) {
+       unprocessedFiles.push(fullPath);
+       logMessage('/api/totals', `Invalid extension file: ${file}`);
+       return;
+     }
+
+     const totalValue = parseCustomNumber(totalStr);
+     if (isNaN(totalValue)) {
+       unprocessedFiles.push(fullPath);
+       logMessage('/api/totals', `Invalid numeric total in file name: ${file} (raw total: ${totalStr})`);
+       return;
+     }
+
+     if (!totalsByMonth[ym]) {
+       totalsByMonth[ym] = 0;
+     }
+     totalsByMonth[ym] += totalValue;
+     logMessage('/api/totals', `Accumulated total for month ${ym}: +${totalValue} -> ${totalsByMonth[ym]}`);
+   });
+
+   const months = Object.keys(totalsByMonth).sort();
+   const totals = months.map(ym => ({
+     ym,
+     total: totalsByMonth[ym]
+   }));
+
+   logMessage('/api/totals', `Returning totals for ${months.length} months. Unprocessed files: ${unprocessedFiles.length}`);
+
+   res.json({
+     months,
+     totals,
+     unprocessedFiles
+   });
+ });
+
+ const mime = require('mime-types');
 
 // Serve static frontend
 app.use(express.static('public'));

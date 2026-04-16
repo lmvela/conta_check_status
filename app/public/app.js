@@ -16,7 +16,11 @@ function extractBadgeNumber(str) {
 }
 
 async function fetchStatus(type = 'main') {
-  const res = await fetch(`${basePath}/api/status?type=${encodeURIComponent(type)}`);
+  const endpoint = (type === 'totals')
+    ? `${basePath}/api/totals`
+    : `${basePath}/api/status?type=${encodeURIComponent(type)}`;
+
+  const res = await fetch(endpoint);
   if (!res.ok) {
     document.getElementById('app').innerHTML = 'Failed to load data.';
     return null;
@@ -24,11 +28,43 @@ async function fetchStatus(type = 'main') {
   return res.json();
 }
 
-// Render the main grid
-function renderGrid({ months, columns, grid }) {
-  if (!months.length) {
+// Render the main grid or totals grid depending on currentType
+function renderGrid(data) {
+  const { months } = data;
+  if (!months || !months.length) {
     return '<p>No files found in the configured folder.</p>';
   }
+
+  const formatMonth = (ym) =>
+    ym && ym.length === 6 ? ym.slice(0, 4) + '/' + ym.slice(4) : ym;
+
+  // Totals view: one column called TOTALS with the totals number per month
+  if (currentType === 'totals') {
+    const totalsMap = {};
+    if (Array.isArray(data.totals)) {
+      data.totals.forEach(t => {
+        if (t && t.ym != null) {
+          totalsMap[t.ym] = t.total;
+        }
+      });
+    }
+
+    let html = '<table><thead><tr><th>Month</th><th>Totals Main Docs</th></tr></thead><tbody>';
+
+    // Oldest at bottom, newest at top
+    for (let i = months.length - 1; i >= 0; i--) {
+      const ym = months[i];
+      const formattedMonth = formatMonth(ym);
+      const totalValue = totalsMap[ym] != null ? totalsMap[ym] : 0;
+      html += `<tr><td>${formattedMonth}</td><td class="cell-ok">${totalValue}</td></tr>`;
+    }
+
+    html += '</tbody></table>';
+    return html;
+  }
+
+  // Default status view (original behavior)
+  const { columns, grid } = data;
 
   // Table header
   let html = '<table><thead><tr><th>Month</th>';
@@ -40,10 +76,7 @@ function renderGrid({ months, columns, grid }) {
   // Table rows (oldest at bottom, newest at top)
   for (let i = grid.length - 1; i >= 0; i--) {
     const row = grid[i];
-    // Format month as YYYY/MM
-    const formattedMonth = row.month.length === 6
-      ? row.month.slice(0, 4) + '/' + row.month.slice(4)
-      : row.month;
+    const formattedMonth = formatMonth(row.month);
     html += `<tr><td>${formattedMonth}</td>`;
     columns.forEach(col => {
       const cell = row[col.key];
