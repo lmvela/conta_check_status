@@ -329,7 +329,7 @@ function parseCustomNumber(str) {
    const months = Object.keys(totalsByMonth).sort();
    const totals = months.map(ym => ({
      ym,
-     total: totalsByMonth[ym]
+     total: Number(totalsByMonth[ym].toFixed(2))
    }));
 
    logMessage('/api/totals', `Returning totals for ${months.length} months. Unprocessed files: ${unprocessedFiles.length}`);
