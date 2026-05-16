@@ -2,21 +2,33 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>File Status Grid</title>
-  <meta name="viewport" content="width=900, initial-scale=1.0">
+  <title>Conta Check Status</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div id="tabs" class="tabs">
-    <button data-type="main" class="tab active">Main Docs</button>
-    <button data-type="extractentries" class="tab">Extract Entries Docs</button>
-    <button data-type="periodic" class="tab">Periodic Invoices</button>
-    <button data-type="support" class="tab">Support Docs</button>
-    <button data-type="investment" class="tab">Investment Docs</button>
-    <button data-type="annual" class="tab">Annual Reports</button>
-    <button data-type="totals" class="tab">Totals</button>
+  <div class="page-shell">
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">Operations Dashboard</p>
+        <p class="page-subtitle">Track archive completeness, totals, and monthly investment positions from one workspace.</p>
+      </div>
+    </header>
+
+    <section class="toolbar-panel">
+      <div id="tabs" class="tabs" aria-label="Sections">
+        <button data-type="main" class="tab active">Main Docs</button>
+        <button data-type="extractentries" class="tab">Extract Entries</button>
+        <button data-type="periodic" class="tab">Periodic Invoices</button>
+        <button data-type="support" class="tab">Support Docs</button>
+        <button data-type="investment" class="tab">Investment Docs</button>
+        <button data-type="annual" class="tab">Annual Reports</button>
+        <button data-type="totals" class="tab">Totals</button>
+      </div>
+    </section>
+
+    <main id="app" class="app-content">Loading...</main>
   </div>
-  <div id="app">Loading...</div>
   <script src="app.js"></script>
 </body>
 </html>

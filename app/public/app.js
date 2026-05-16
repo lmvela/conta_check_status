@@ -32,7 +32,7 @@ async function fetchStatus(type = 'main') {
 function renderGrid(data) {
   const { months } = data;
   if (!months || !months.length) {
-    return '<p>No files found in the configured folder.</p>';
+    return '<section class="data-card empty-state"><p>No files found in the configured folder.</p></section>';
   }
 
   const formatMonth = (ym) =>
@@ -61,7 +61,7 @@ function renderGrid(data) {
       });
     }
 
-    let html = '<table><thead><tr><th>Month</th><th>Totals Main Docs</th><th>Total Investments</th><th>TOTAL</th></tr></thead><tbody>';
+    let html = '<section class="data-card"><div class="table-wrap"><table><thead><tr><th>Month</th><th>Totals Main Docs</th><th>Total Investments</th><th>TOTAL</th></tr></thead><tbody>';
 
     // Oldest at bottom, newest at top
     for (let i = months.length - 1; i >= 0; i--) {
@@ -73,7 +73,7 @@ function renderGrid(data) {
       html += `<tr><td>${formattedMonth}</td><td class="cell-ok">${formatAmount(totalValue)}</td><td class="cell-ok">${formatAmount(investmentValue)}</td><td class="cell-ok">${formatAmount(combinedTotal)}</td></tr>`;
     }
 
-    html += '</tbody></table>';
+    html += '</tbody></table></div></section>';
     return html;
   }
 
@@ -81,7 +81,7 @@ function renderGrid(data) {
   const { columns, grid } = data;
 
   // Table header
-  let html = '<table><thead><tr><th>Month</th>';
+  let html = '<section class="data-card"><div class="table-wrap"><table><thead><tr><th>Month</th>';
   columns.forEach(col => {
     html += `<th>${col.label}</th>`;
   });
@@ -167,7 +167,7 @@ function renderGrid(data) {
     html += '</tr>';
   }
 
-  html += '</tbody></table>';
+  html += '</tbody></table></div></section>';
   return html;
 }
 
@@ -175,13 +175,16 @@ function renderGrid(data) {
 function renderUnprocessedFiles(unprocessedFiles) {
   if (!unprocessedFiles || !unprocessedFiles.length) return '';
   let html = `
-    <div class="unprocessed-section">
-      <h2 style="margin-top:2em; color:#fff; text-align:left;">Unprocessed Files</h2>
-      <div class="unprocessed-list" style="background:#2d014d; border-radius:10px; padding:1em; margin-bottom:2em;">
-        <table style="width:100%; border-collapse:collapse;">
+    <section class="data-card unprocessed-section">
+      <div class="section-heading">
+        <h2>Unprocessed Files</h2>
+        <p>Files that could not be parsed with the expected naming pattern or extension rules.</p>
+      </div>
+      <div class="table-wrap unprocessed-list">
+        <table class="unprocessed-table">
           <thead>
             <tr>
-              <th style="background:#4b1a7f; color:#fff; text-align:left; padding:8px; border-radius:6px 6px 0 0;">Full Path</th>
+              <th>Full Path</th>
             </tr>
           </thead>
           <tbody>
@@ -189,7 +192,7 @@ function renderUnprocessedFiles(unprocessedFiles) {
   unprocessedFiles.forEach(file => {
     html += `
       <tr>
-        <td style="padding:8px; color:#fff; font-family:monospace; word-break:break-all; background:#1a0033; font-weight:bold;">
+        <td class="file-path-cell">
           ${file}
         </td>
       </tr>
@@ -199,7 +202,7 @@ function renderUnprocessedFiles(unprocessedFiles) {
           </tbody>
         </table>
       </div>
-    </div>
+    </section>
   `;
   return html;
 }
@@ -208,7 +211,7 @@ async function render() {
   const data = await fetchStatus(currentType);
   if (!data) return;
   let html = `
-    <div style="display: flex; flex-direction: column; align-items: flex-start; width: 100%; max-width: 1100px; margin: 32px 0 32px 32px; padding: 0 16px;">
+    <div class="content-stack">
       ${renderGrid(data)}
       ${renderUnprocessedFiles(data.unprocessedFiles)}
     </div>
