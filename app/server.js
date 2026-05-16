@@ -136,6 +136,32 @@ function parseCustomNumber(str) {
   return isNaN(num) ? NaN : (isNegative ? -num : num);
 }
 
+function getAllMonthsInRange(start, end) {
+  if (!start || !end) {
+    return [];
+  }
+
+  const result = [];
+  let year = parseInt(start.slice(0, 4), 10);
+  let month = parseInt(start.slice(4, 6), 10);
+  const endYear = parseInt(end.slice(0, 4), 10);
+  const endMonth = parseInt(end.slice(4, 6), 10);
+
+  while (year < endYear || (year === endYear && month <= endMonth)) {
+    result.push(
+      year.toString().padStart(4, '0') +
+      month.toString().padStart(2, '0')
+    );
+    month++;
+    if (month > 12) {
+      month = 1;
+      year++;
+    }
+  }
+
+  return result;
+}
+
 async function getMonthlyInvestmentsFromDb() {
   if (!config.mongodb.url || !config.mongodb.dbName) {
     logMessage('getMonthlyInvestmentsFromDb', 'MongoDB config missing. Skipping investments lookup.');
@@ -386,10 +412,15 @@ async function getMonthlyInvestmentsFromDb() {
      logMessage('/api/totals', `ERROR: Failed to load investments from MongoDB: ${err.message}`);
    }
 
-   const months = Array.from(new Set([
+   let months = Array.from(new Set([
      ...Object.keys(totalsByMonth),
      ...Object.keys(investmentsByMonth)
    ])).sort();
+
+   if (months.length > 0) {
+     months = getAllMonthsInRange(months[0], months[months.length - 1]);
+   }
+
    const totals = months.map(ym => ({
      ym,
      total: Number(((totalsByMonth[ym] || 0)).toFixed(2))

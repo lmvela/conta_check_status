@@ -28,6 +28,106 @@ async function fetchStatus(type = 'main') {
   return res.json();
 }
 
+function buildMonthlyValueMap(items, key) {
+  const map = {};
+
+  if (!Array.isArray(items)) {
+    return map;
+  }
+
+  items.forEach((item) => {
+    if (item && item.ym != null) {
+      map[item.ym] = Number(item[key]) || 0;
+    }
+  });
+
+  return map;
+}
+
+function renderTotalsHistogram(months, totalsMap, investmentsMap, formatMonth, formatAmount) {
+  const values = months.map((ym) => {
+    const mainDocs = totalsMap[ym] != null ? Number(totalsMap[ym]) : 0;
+    const investments = investmentsMap[ym] != null ? Number(investmentsMap[ym]) : 0;
+
+    return {
+      ym,
+      mainDocs,
+      investments,
+      combined: mainDocs + investments
+    };
+  });
+
+  const maxCombined = Math.max(...values.map((value) => value.combined), 0);
+  const chartTop = 28;
+  const chartBottom = 262;
+  const chartLeft = 64;
+  const chartRight = 24;
+  const plotHeight = chartBottom - chartTop;
+  const slotWidth = 74;
+  const barWidth = 34;
+  const width = chartLeft + (values.length * slotWidth) + chartRight;
+  const height = 308;
+  const scaleMax = maxCombined > 0 ? maxCombined : 1;
+  const gridSteps = 4;
+
+  let svg = `<svg viewBox="0 0 ${width} ${height}" class="totals-chart-svg" role="img" aria-label="Monthly totals chart">`;
+
+  for (let step = 0; step <= gridSteps; step++) {
+    const ratio = step / gridSteps;
+    const y = chartBottom - (plotHeight * ratio);
+    const labelValue = formatAmount(scaleMax * ratio);
+    svg += `<line x1="${chartLeft}" y1="${y}" x2="${width - chartRight}" y2="${y}" class="chart-grid-line"></line>`;
+    svg += `<text x="${chartLeft - 10}" y="${y + 4}" text-anchor="end" class="chart-axis-label">${labelValue}</text>`;
+  }
+
+  svg += `<line x1="${chartLeft}" y1="${chartBottom}" x2="${width - chartRight}" y2="${chartBottom}" class="chart-axis-line"></line>`;
+
+  values.forEach((value, index) => {
+    const slotStart = chartLeft + (index * slotWidth);
+    const barX = slotStart + ((slotWidth - barWidth) / 2);
+    const mainHeight = (value.mainDocs / scaleMax) * plotHeight;
+    const investmentHeight = (value.investments / scaleMax) * plotHeight;
+    const mainY = chartBottom - mainHeight;
+    const investmentY = mainY - investmentHeight;
+    const labelY = Math.max(18, investmentY - 8);
+    const monthLabel = formatMonth(value.ym);
+    const tooltip = `${monthLabel} | Main Docs: ${formatAmount(value.mainDocs)} | Investments: ${formatAmount(value.investments)} | Total: ${formatAmount(value.combined)}`;
+
+    svg += `<g>`;
+    svg += `<title>${tooltip}</title>`;
+
+    if (value.combined > 0) {
+      svg += `<rect x="${barX}" y="${mainY}" width="${barWidth}" height="${mainHeight}" rx="10" ry="10" class="chart-bar-main"></rect>`;
+
+      if (value.investments > 0) {
+        svg += `<rect x="${barX}" y="${investmentY}" width="${barWidth}" height="${investmentHeight}" rx="10" ry="10" class="chart-bar-investment"></rect>`;
+      }
+
+      svg += `<text x="${slotStart + (slotWidth / 2)}" y="${labelY}" text-anchor="middle" class="chart-value-label">${formatAmount(value.combined)}</text>`;
+    }
+
+    svg += `<text x="${slotStart + (slotWidth / 2)}" y="${chartBottom + 24}" text-anchor="middle" class="chart-month-label">${monthLabel}</text>`;
+    svg += `</g>`;
+  });
+
+  svg += '</svg>';
+
+  return `
+    <section class="data-card totals-chart-card">
+      <div class="section-heading">
+        <h2>Monthly Totals</h2>
+      </div>
+      <div class="chart-legend">
+        <span class="legend-item"><span class="legend-swatch legend-swatch-main"></span>Totals Main Docs</span>
+        <span class="legend-item"><span class="legend-swatch legend-swatch-investment"></span>Total Investments</span>
+      </div>
+      <div class="chart-wrap">
+        ${svg}
+      </div>
+    </section>
+  `;
+}
+
 // Render the main grid or totals grid depending on currentType
 function renderGrid(data) {
   const { months } = data;
@@ -42,26 +142,13 @@ function renderGrid(data) {
     return Number.isFinite(numericValue) ? numericValue.toFixed(2) : '0.00';
   };
 
-  // Totals view: one column called TOTALS with the totals number per month
+  // Totals view: histogram plus monthly totals table.
   if (currentType === 'totals') {
-    const totalsMap = {};
-    const investmentsMap = {};
-    if (Array.isArray(data.totals)) {
-      data.totals.forEach(t => {
-        if (t && t.ym != null) {
-          totalsMap[t.ym] = t.total;
-        }
-      });
-    }
-    if (Array.isArray(data.investments)) {
-      data.investments.forEach(t => {
-        if (t && t.ym != null) {
-          investmentsMap[t.ym] = t.totalOpenBuyValueEur;
-        }
-      });
-    }
+    const totalsMap = buildMonthlyValueMap(data.totals, 'total');
+    const investmentsMap = buildMonthlyValueMap(data.investments, 'totalOpenBuyValueEur');
 
-    let html = '<section class="data-card"><div class="table-wrap"><table><thead><tr><th>Month</th><th>Totals Main Docs</th><th>Total Investments</th><th>TOTAL</th></tr></thead><tbody>';
+    let html = renderTotalsHistogram(months, totalsMap, investmentsMap, formatMonth, formatAmount);
+    html += '<section class="data-card"><div class="table-wrap"><table><thead><tr><th>Month</th><th>Totals Main Docs</th><th>Total Investments</th><th>TOTAL</th></tr></thead><tbody>';
 
     // Oldest at bottom, newest at top
     for (let i = months.length - 1; i >= 0; i--) {
