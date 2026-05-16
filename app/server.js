@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const { MongoClient } = require('mongodb');
 
 const app = express();
 const PORT = 9000;
@@ -34,6 +35,10 @@ logMessage('Init', `Using LogFile: ${LOG_FILE}`)
 let dirConfig = '/config';
 const defaultConfig = {
   archiveFolderPath:  "../../conta_archivos/archive",
+  mongodb: {
+    url: "mongodb://localhost:27017",
+    dbName: "conta_db"
+  }
 }
 if (!directoryExists(dirConfig)){
   dirConfig = '../config'
@@ -48,7 +53,14 @@ const CONFIG_FILE = path.join(dirConfig, 'conta_check_status_config.json');
 if (!fs.existsSync(CONFIG_FILE)) {
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(defaultConfig, null, 2), 'utf8');
 }
-let config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+let config = {
+  ...defaultConfig,
+  ...JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'))
+};
+config.mongodb = {
+  ...defaultConfig.mongodb,
+  ...(config.mongodb || {})
+};
 logMessage('Init', `Using ConfigFile: ${CONFIG_FILE}`)
 logMessage('Init', `Using Config param, config.archiveFolderPath: ${config.archiveFolderPath}`)
 
@@ -124,8 +136,49 @@ function parseCustomNumber(str) {
   return isNaN(num) ? NaN : (isNegative ? -num : num);
 }
 
- // API endpoint
- app.get('/api/status', (req, res) => {
+async function getMonthlyInvestmentsFromDb() {
+  if (!config.mongodb.url || !config.mongodb.dbName) {
+    logMessage('getMonthlyInvestmentsFromDb', 'MongoDB config missing. Skipping investments lookup.');
+    return {};
+  }
+
+  const client = new MongoClient(config.mongodb.url);
+
+  try {
+    await client.connect();
+    const collection = client.db(config.mongodb.dbName).collection('operation_position_per_month');
+    const docs = await collection.find(
+      {},
+      {
+        projection: {
+          month: 1,
+          total_open_buy_value_eur: 1
+        }
+      }
+    ).toArray();
+
+    const investmentsByMonth = {};
+    docs.forEach((doc) => {
+      if (typeof doc?.month !== 'string') {
+        return;
+      }
+
+      const normalizedMonth = doc.month.replace('-', '');
+      const totalOpenBuyValueEur = Number(doc.total_open_buy_value_eur);
+      investmentsByMonth[normalizedMonth] = Number.isFinite(totalOpenBuyValueEur)
+        ? Number(totalOpenBuyValueEur.toFixed(2))
+        : 0;
+    });
+
+    logMessage('getMonthlyInvestmentsFromDb', `Loaded investments for ${Object.keys(investmentsByMonth).length} month(s).`);
+    return investmentsByMonth;
+  } finally {
+    await client.close();
+  }
+}
+
+  // API endpoint
+  app.get('/api/status', (req, res) => {
   // Recursively collect all files in folderPath and subfolders
   function getAllFiles(dir, fileList = []) {
     logMessage('getAllFiles', `Reading directory: ${dir}`);
@@ -257,7 +310,7 @@ function parseCustomNumber(str) {
  });
 
  // New endpoint for Totals tab: sums totals per month in archive_main
- app.get('/api/totals', (req, res) => {
+ app.get('/api/totals', async (req, res) => {
    // Work only on the "main" folder as requested
    const selectedFolder = folderMap.main;
    logMessage('/api/totals', `Started processing /api/totals for folder: ${selectedFolder}`);
@@ -326,10 +379,24 @@ function parseCustomNumber(str) {
      logMessage('/api/totals', `Accumulated total for month ${ym}: +${totalValue} -> ${totalsByMonth[ym]}`);
    });
 
-   const months = Object.keys(totalsByMonth).sort();
+   let investmentsByMonth = {};
+   try {
+     investmentsByMonth = await getMonthlyInvestmentsFromDb();
+   } catch (err) {
+     logMessage('/api/totals', `ERROR: Failed to load investments from MongoDB: ${err.message}`);
+   }
+
+   const months = Array.from(new Set([
+     ...Object.keys(totalsByMonth),
+     ...Object.keys(investmentsByMonth)
+   ])).sort();
    const totals = months.map(ym => ({
      ym,
-     total: Number(totalsByMonth[ym].toFixed(2))
+     total: Number(((totalsByMonth[ym] || 0)).toFixed(2))
+   }));
+   const investments = months.map(ym => ({
+     ym,
+     totalOpenBuyValueEur: investmentsByMonth[ym] != null ? investmentsByMonth[ym] : 0
    }));
 
    logMessage('/api/totals', `Returning totals for ${months.length} months. Unprocessed files: ${unprocessedFiles.length}`);
@@ -337,9 +404,10 @@ function parseCustomNumber(str) {
    res.json({
      months,
      totals,
+      investments,
      unprocessedFiles
    });
- });
+  });
 
  const mime = require('mime-types');
 

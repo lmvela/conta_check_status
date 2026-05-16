@@ -1,4 +1,8 @@
 {
-  "archiveFolderPath": "../../conta_archivos/archive"
+  "archiveFolderPath": "../../conta_archivos/archive",
+  "mongodb": {
+    "url": "mongodb://localhost:27017",
+    "dbName": "conta_db"
+  }
 }
 

@@ -37,10 +37,15 @@ function renderGrid(data) {
 
   const formatMonth = (ym) =>
     ym && ym.length === 6 ? ym.slice(0, 4) + '/' + ym.slice(4) : ym;
+  const formatAmount = (value) => {
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) ? numericValue.toFixed(2) : '0.00';
+  };
 
   // Totals view: one column called TOTALS with the totals number per month
   if (currentType === 'totals') {
     const totalsMap = {};
+    const investmentsMap = {};
     if (Array.isArray(data.totals)) {
       data.totals.forEach(t => {
         if (t && t.ym != null) {
@@ -48,15 +53,24 @@ function renderGrid(data) {
         }
       });
     }
+    if (Array.isArray(data.investments)) {
+      data.investments.forEach(t => {
+        if (t && t.ym != null) {
+          investmentsMap[t.ym] = t.totalOpenBuyValueEur;
+        }
+      });
+    }
 
-    let html = '<table><thead><tr><th>Month</th><th>Totals Main Docs</th></tr></thead><tbody>';
+    let html = '<table><thead><tr><th>Month</th><th>Totals Main Docs</th><th>Total Investments</th><th>TOTAL</th></tr></thead><tbody>';
 
     // Oldest at bottom, newest at top
     for (let i = months.length - 1; i >= 0; i--) {
       const ym = months[i];
       const formattedMonth = formatMonth(ym);
       const totalValue = totalsMap[ym] != null ? totalsMap[ym] : 0;
-      html += `<tr><td>${formattedMonth}</td><td class="cell-ok">${totalValue}</td></tr>`;
+      const investmentValue = investmentsMap[ym] != null ? investmentsMap[ym] : 0;
+      const combinedTotal = Number(totalValue) + Number(investmentValue);
+      html += `<tr><td>${formattedMonth}</td><td class="cell-ok">${formatAmount(totalValue)}</td><td class="cell-ok">${formatAmount(investmentValue)}</td><td class="cell-ok">${formatAmount(combinedTotal)}</td></tr>`;
     }
 
     html += '</tbody></table>';
