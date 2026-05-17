@@ -82,6 +82,68 @@ const folderMap = {
   annual: path.join(basePath, "archive_annual"),
 };
 
+const archiveSummaryOrder = [
+  { key: 'annual', name: 'archive_annual' },
+  { key: 'main', name: 'archive_main' },
+  { key: 'extractentries', name: 'archive_extractentries' },
+  { key: 'investment', name: 'archive_investment' },
+  { key: 'periodic', name: 'archive_periodic' },
+  { key: 'support', name: 'archive_support' }
+];
+
+function getDirectoryEntryCounts(dir) {
+  const counts = {
+    fileCount: 0,
+    folderCount: 0
+  };
+
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  entries.forEach((entry) => {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      counts.folderCount += 1;
+      const nestedCounts = getDirectoryEntryCounts(fullPath);
+      counts.fileCount += nestedCounts.fileCount;
+      counts.folderCount += nestedCounts.folderCount;
+      return;
+    }
+
+    if (entry.isFile()) {
+      counts.fileCount += 1;
+    }
+  });
+
+  return counts;
+}
+
+function buildArchiveSummary() {
+  return archiveSummaryOrder.map(({ key, name }) => {
+    const dirPath = folderMap[key];
+    const exists = directoryExists(dirPath);
+
+    if (!exists) {
+      return {
+        key,
+        name,
+        path: dirPath,
+        exists: false,
+        fileCount: 0,
+        folderCount: 0
+      };
+    }
+
+    const counts = getDirectoryEntryCounts(dirPath);
+    return {
+      key,
+      name,
+      path: dirPath,
+      exists: true,
+      fileCount: counts.fileCount,
+      folderCount: counts.folderCount
+    };
+  });
+}
+
 // Logging utility
 function logMessage(functionName, message) {
   try {
@@ -197,11 +259,22 @@ async function getMonthlyInvestmentsFromDb() {
     });
 
     logMessage('getMonthlyInvestmentsFromDb', `Loaded investments for ${Object.keys(investmentsByMonth).length} month(s).`);
-    return investmentsByMonth;
+  return investmentsByMonth;
   } finally {
     await client.close();
   }
 }
+
+app.get('/api/archive-summary', (req, res) => {
+  try {
+    const archives = buildArchiveSummary();
+    logMessage('/api/archive-summary', `Returning archive counts for ${archives.length} directories.`);
+    res.json({ archives });
+  } catch (err) {
+    logMessage('/api/archive-summary', `ERROR: Failed to build archive summary: ${err.message}`);
+    res.status(500).json({ error: 'Failed to build archive summary' });
+  }
+});
 
   // API endpoint
   app.get('/api/status', (req, res) => {

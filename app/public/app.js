@@ -3,6 +3,7 @@ const basePath = window.location.pathname.startsWith('/conta_check_docs')
   : '';
 
 let currentType = 'main';
+let archiveSummaryPromise = null;
 
 function extractBadgeNumber(str) {
   const match = str.match(/_t_([n]?\d+c\d+)/);
@@ -26,6 +27,72 @@ async function fetchStatus(type = 'main') {
     return null;
   }
   return res.json();
+}
+
+async function fetchArchiveSummary() {
+  if (!archiveSummaryPromise) {
+    archiveSummaryPromise = fetch(`${basePath}/api/archive-summary`)
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error('Failed to load archive summary.');
+        }
+
+        return res.json();
+      })
+      .catch((err) => {
+        archiveSummaryPromise = null;
+        throw err;
+      });
+  }
+
+  return archiveSummaryPromise;
+}
+
+function formatArchiveEntryLabel(count, singular, plural) {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+function renderArchiveSummary(archives) {
+  if (!Array.isArray(archives) || archives.length === 0) {
+    return '<p class="archive-summary-empty">Archive directory summary is unavailable.</p>';
+  }
+
+  const items = archives.map((archive) => {
+    if (!archive.exists) {
+      return `
+        <article class="archive-summary-item archive-summary-item-missing">
+          <p class="archive-summary-name">${archive.name}</p>
+          <p class="archive-summary-copy">Directory not found.</p>
+        </article>
+      `;
+    }
+
+    const filesLabel = formatArchiveEntryLabel(archive.fileCount, 'file', 'files');
+    const foldersLabel = formatArchiveEntryLabel(archive.folderCount, 'folder', 'folders');
+
+    return `
+      <article class="archive-summary-item">
+        <p class="archive-summary-name">${archive.name}</p>
+        <p class="archive-summary-copy">Contains ${filesLabel} and ${foldersLabel}.</p>
+      </article>
+    `;
+  }).join('');
+
+  return `<div class="archive-summary-grid">${items}</div>`;
+}
+
+async function renderArchiveSummaryHeader() {
+  const summaryElement = document.getElementById('archive-summary');
+  if (!summaryElement) {
+    return;
+  }
+
+  try {
+    const data = await fetchArchiveSummary();
+    summaryElement.innerHTML = renderArchiveSummary(data.archives);
+  } catch (err) {
+    summaryElement.innerHTML = '<p class="archive-summary-empty">Failed to load archive directory summary.</p>';
+  }
 }
 
 function buildMonthlyValueMap(items, key) {
@@ -295,6 +362,7 @@ function renderUnprocessedFiles(unprocessedFiles) {
 }
 
 async function render() {
+  renderArchiveSummaryHeader();
   const data = await fetchStatus(currentType);
   if (!data) return;
   let html = `
