@@ -52,6 +52,48 @@ function formatArchiveEntryLabel(count, singular, plural) {
   return `${count} ${count === 1 ? singular : plural}`;
 }
 
+function formatColumnHeader(label, count) {
+  return `${label} (${count})`;
+}
+
+function getSectionDisplaySummary(data) {
+  if (currentType === 'totals') {
+    const totalsCount = Array.isArray(data.totals) ? data.totals.length : 0;
+    const investmentsCount = Array.isArray(data.investments) ? data.investments.length : 0;
+
+    return {
+      title: 'Total entries displayed',
+      count: totalsCount + investmentsCount,
+      description: 'Sum of the visible monthly totals and investment entries in this section.'
+    };
+  }
+
+  const columns = Array.isArray(data.columns) ? data.columns : [];
+  const grid = Array.isArray(data.grid) ? data.grid : [];
+  const count = columns.reduce((total, col) => (
+    total + grid.reduce((columnTotal, row) => columnTotal + ((row[col.key] && row[col.key].count) || 0), 0)
+  ), 0);
+
+  return {
+    title: 'Total files displayed',
+    count,
+    description: 'Sum of all file counters shown in the current section table.'
+  };
+}
+
+function renderSectionDisplaySummary(data) {
+  const summary = getSectionDisplaySummary(data);
+
+  return `
+    <section class="data-card section-summary-card">
+      <div class="section-summary-inner">
+        <p class="section-summary-label">${summary.title}</p>
+        <p class="section-summary-value">${summary.count}</p>
+      </div>
+    </section>
+  `;
+}
+
 function renderArchiveSummary(archives) {
   if (!Array.isArray(archives) || archives.length === 0) {
     return '<p class="archive-summary-empty">Archive directory summary is unavailable.</p>';
@@ -213,9 +255,10 @@ function renderGrid(data) {
   if (currentType === 'totals') {
     const totalsMap = buildMonthlyValueMap(data.totals, 'total');
     const investmentsMap = buildMonthlyValueMap(data.investments, 'totalOpenBuyValueEur');
+    const monthCount = months.length;
 
     let html = renderTotalsHistogram(months, totalsMap, investmentsMap, formatMonth, formatAmount);
-    html += '<section class="data-card"><div class="table-wrap"><table><thead><tr><th>Month</th><th>Totals Main Docs</th><th>Total Investments</th><th>TOTAL</th></tr></thead><tbody>';
+    html += `<section class="data-card"><div class="table-wrap"><table><thead><tr><th>${formatColumnHeader('Month', monthCount)}</th><th>${formatColumnHeader('Totals Main Docs', monthCount)}</th><th>${formatColumnHeader('Total Investments', monthCount)}</th><th>${formatColumnHeader('TOTAL', monthCount)}</th></tr></thead><tbody>`;
 
     // Oldest at bottom, newest at top
     for (let i = months.length - 1; i >= 0; i--) {
@@ -233,11 +276,16 @@ function renderGrid(data) {
 
   // Default status view (original behavior)
   const { columns, grid } = data;
+  const monthCount = grid.length;
+  const columnCounts = Object.fromEntries(columns.map((col) => [
+    col.key,
+    grid.reduce((count, row) => count + ((row[col.key] && row[col.key].count) || 0), 0)
+  ]));
 
   // Table header
-  let html = '<section class="data-card"><div class="table-wrap"><table><thead><tr><th>Month</th>';
+  let html = `<section class="data-card"><div class="table-wrap"><table><thead><tr><th>${formatColumnHeader('Month', monthCount)}</th>`;
   columns.forEach(col => {
-    html += `<th>${col.label}</th>`;
+    html += `<th>${formatColumnHeader(col.label, columnCounts[col.key] || 0)}</th>`;
   });
   html += '</tr></thead><tbody>';
 
@@ -328,6 +376,7 @@ function renderGrid(data) {
 // Render the unprocessed files list
 function renderUnprocessedFiles(unprocessedFiles) {
   if (!unprocessedFiles || !unprocessedFiles.length) return '';
+  const fileCount = unprocessedFiles.length;
   let html = `
     <section class="data-card unprocessed-section">
       <div class="section-heading">
@@ -338,7 +387,7 @@ function renderUnprocessedFiles(unprocessedFiles) {
         <table class="unprocessed-table">
           <thead>
             <tr>
-              <th>Full Path</th>
+              <th>${formatColumnHeader('Full Path', fileCount)}</th>
             </tr>
           </thead>
           <tbody>
@@ -367,6 +416,7 @@ async function render() {
   if (!data) return;
   let html = `
     <div class="content-stack">
+      ${renderSectionDisplaySummary(data)}
       ${renderGrid(data)}
       ${renderUnprocessedFiles(data.unprocessedFiles)}
     </div>
