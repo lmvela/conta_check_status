@@ -56,6 +56,10 @@ function formatColumnHeader(label, count) {
   return `${label} (${count})`;
 }
 
+function renderTableHeaderCell(label) {
+  return `<th><span class="table-header-label">${label}</span></th>`;
+}
+
 function getSectionDisplaySummary(data) {
   if (currentType === 'totals') {
     const totalsCount = Array.isArray(data.totals) ? data.totals.length : 0;
@@ -89,6 +93,7 @@ function renderSectionDisplaySummary(data) {
       <div class="section-summary-inner">
         <p class="section-summary-label">${summary.title}</p>
         <p class="section-summary-value">${summary.count}</p>
+        <p class="section-summary-copy">${summary.description}</p>
       </div>
     </section>
   `;
@@ -258,7 +263,7 @@ function renderGrid(data) {
     const monthCount = months.length;
 
     let html = renderTotalsHistogram(months, totalsMap, investmentsMap, formatMonth, formatAmount);
-    html += `<section class="data-card"><div class="table-wrap"><table><thead><tr><th>${formatColumnHeader('Month', monthCount)}</th><th>${formatColumnHeader('Totals Main Docs', monthCount)}</th><th>${formatColumnHeader('Total Investments', monthCount)}</th><th>${formatColumnHeader('TOTAL', monthCount)}</th></tr></thead><tbody>`;
+    html += `<section class="data-card"><div class="table-wrap"><table><thead><tr>${renderTableHeaderCell(formatColumnHeader('Month', monthCount))}${renderTableHeaderCell(formatColumnHeader('Totals Main Docs', monthCount))}${renderTableHeaderCell(formatColumnHeader('Total Investments', monthCount))}${renderTableHeaderCell(formatColumnHeader('TOTAL', monthCount))}</tr></thead><tbody>`;
 
     // Oldest at bottom, newest at top
     for (let i = months.length - 1; i >= 0; i--) {
@@ -283,9 +288,9 @@ function renderGrid(data) {
   ]));
 
   // Table header
-  let html = `<section class="data-card"><div class="table-wrap"><table><thead><tr><th>${formatColumnHeader('Month', monthCount)}</th>`;
+  let html = `<section class="data-card"><div class="table-wrap"><table class="compact-table"><thead><tr>${renderTableHeaderCell(formatColumnHeader('Month', monthCount))}`;
   columns.forEach(col => {
-    html += `<th>${formatColumnHeader(col.label, columnCounts[col.key] || 0)}</th>`;
+    html += renderTableHeaderCell(formatColumnHeader(col.label, columnCounts[col.key] || 0));
   });
   html += '</tr></thead><tbody>';
 
@@ -387,7 +392,7 @@ function renderUnprocessedFiles(unprocessedFiles) {
         <table class="unprocessed-table">
           <thead>
             <tr>
-              <th>${formatColumnHeader('Full Path', fileCount)}</th>
+              ${renderTableHeaderCell(formatColumnHeader('Full Path', fileCount))}
             </tr>
           </thead>
           <tbody>
