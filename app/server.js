@@ -224,9 +224,9 @@ function getAllMonthsInRange(start, end) {
   return result;
 }
 
-async function getMonthlyInvestmentsFromDb() {
+async function getMonthlyInvestmentsFromDb(collectionName = 'operation_position_per_month') {
   if (!config.mongodb.url || !config.mongodb.dbName) {
-    logMessage('getMonthlyInvestmentsFromDb', 'MongoDB config missing. Skipping investments lookup.');
+    logMessage('getMonthlyInvestmentsFromDb', `MongoDB config missing. Skipping investments lookup for ${collectionName}.`);
     return {};
   }
 
@@ -234,7 +234,7 @@ async function getMonthlyInvestmentsFromDb() {
 
   try {
     await client.connect();
-    const collection = client.db(config.mongodb.dbName).collection('operation_position_per_month');
+    const collection = client.db(config.mongodb.dbName).collection(collectionName);
     const docs = await collection.find(
       {},
       {
@@ -258,8 +258,8 @@ async function getMonthlyInvestmentsFromDb() {
         : 0;
     });
 
-    logMessage('getMonthlyInvestmentsFromDb', `Loaded investments for ${Object.keys(investmentsByMonth).length} month(s).`);
-  return investmentsByMonth;
+    logMessage('getMonthlyInvestmentsFromDb', `Loaded investments for ${Object.keys(investmentsByMonth).length} month(s) from ${collectionName}.`);
+    return investmentsByMonth;
   } finally {
     await client.close();
   }
@@ -443,6 +443,8 @@ app.get('/api/archive-summary', (req, res) => {
    const pattern = /^([^_]+)_([^_]+)_(.+?)_d_(\d+)_t_([^\.]+)\.([^.]+)$/;
 
    const totalsByMonth = {};
+   const degiroSaldoByMonth = {};
+   const traderPatrimonioNetoByMonth = {};
    const unprocessedFiles = [];
 
    files.forEach(fullPath => {
@@ -454,9 +456,10 @@ app.get('/api/archive-summary', (req, res) => {
        return;
      }
 
-     const ym = match[1];       // YYYYMM
-     const totalStr = match[5]; // encoded total, e.g. 123c45 or n123c45
-     const ext = match[6];
+      const ym = match[1];       // YYYYMM
+      const description = `${match[2]}_${match[3]}`;
+      const totalStr = match[5]; // encoded total, e.g. 123c45 or n123c45
+      const ext = match[6];
 
      if (!validExtensions.includes(ext.toLowerCase())) {
        unprocessedFiles.push(fullPath);
@@ -471,24 +474,47 @@ app.get('/api/archive-summary', (req, res) => {
        return;
      }
 
-     if (!totalsByMonth[ym]) {
-       totalsByMonth[ym] = 0;
-     }
-     totalsByMonth[ym] += totalValue;
-     logMessage('/api/totals', `Accumulated total for month ${ym}: +${totalValue} -> ${totalsByMonth[ym]}`);
-   });
+      if (!totalsByMonth[ym]) {
+        totalsByMonth[ym] = 0;
+      }
+      totalsByMonth[ym] += totalValue;
 
-   let investmentsByMonth = {};
-   try {
-     investmentsByMonth = await getMonthlyInvestmentsFromDb();
-   } catch (err) {
-     logMessage('/api/totals', `ERROR: Failed to load investments from MongoDB: ${err.message}`);
-   }
+      if (description === 'DEGIRO_Saldo') {
+        if (!degiroSaldoByMonth[ym]) {
+          degiroSaldoByMonth[ym] = 0;
+        }
+        degiroSaldoByMonth[ym] += totalValue;
+      }
 
-   let months = Array.from(new Set([
-     ...Object.keys(totalsByMonth),
-     ...Object.keys(investmentsByMonth)
-   ])).sort();
+      if (description === 'TRADER_Patrimonio_Neto') {
+        if (!traderPatrimonioNetoByMonth[ym]) {
+          traderPatrimonioNetoByMonth[ym] = 0;
+        }
+        traderPatrimonioNetoByMonth[ym] += totalValue;
+      }
+
+      logMessage('/api/totals', `Accumulated total for month ${ym}: +${totalValue} -> ${totalsByMonth[ym]}`);
+    });
+
+    let investmentsByMonth = {};
+    let traderInvestmentsByMonth = {};
+    try {
+      investmentsByMonth = await getMonthlyInvestmentsFromDb('operation_position_per_month');
+    } catch (err) {
+      logMessage('/api/totals', `ERROR: Failed to load investments from MongoDB: ${err.message}`);
+    }
+
+    try {
+      traderInvestmentsByMonth = await getMonthlyInvestmentsFromDb('operation_position_per_month_trader');
+    } catch (err) {
+      logMessage('/api/totals', `ERROR: Failed to load trader investments from MongoDB: ${err.message}`);
+    }
+
+    let months = Array.from(new Set([
+      ...Object.keys(totalsByMonth),
+      ...Object.keys(investmentsByMonth),
+      ...Object.keys(traderInvestmentsByMonth)
+    ])).sort();
 
    if (months.length > 0) {
      months = getAllMonthsInRange(months[0], months[months.length - 1]);
@@ -498,19 +524,34 @@ app.get('/api/archive-summary', (req, res) => {
      ym,
      total: Number(((totalsByMonth[ym] || 0)).toFixed(2))
    }));
-   const investments = months.map(ym => ({
-     ym,
-     totalOpenBuyValueEur: investmentsByMonth[ym] != null ? investmentsByMonth[ym] : 0
-   }));
+    const investments = months.map(ym => ({
+      ym,
+      totalOpenBuyValueEur: investmentsByMonth[ym] != null ? investmentsByMonth[ym] : 0
+    }));
+    const traderInvestments = months.map(ym => ({
+      ym,
+      totalOpenBuyValueEur: traderInvestmentsByMonth[ym] != null ? traderInvestmentsByMonth[ym] : 0
+    }));
+    const degiroSaldo = months.map(ym => ({
+      ym,
+      total: degiroSaldoByMonth[ym] != null ? Number(degiroSaldoByMonth[ym].toFixed(2)) : 0
+    }));
+    const traderPatrimonioNeto = months.map(ym => ({
+      ym,
+      total: traderPatrimonioNetoByMonth[ym] != null ? Number(traderPatrimonioNetoByMonth[ym].toFixed(2)) : 0
+    }));
 
    logMessage('/api/totals', `Returning totals for ${months.length} months. Unprocessed files: ${unprocessedFiles.length}`);
 
-   res.json({
-     months,
-     totals,
+    res.json({
+      months,
+      totals,
       investments,
-     unprocessedFiles
-   });
+      traderInvestments,
+      degiroSaldo,
+      traderPatrimonioNeto,
+      unprocessedFiles
+    });
   });
 
  const mime = require('mime-types');

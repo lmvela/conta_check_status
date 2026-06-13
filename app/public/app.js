@@ -64,10 +64,13 @@ function getSectionDisplaySummary(data) {
   if (currentType === 'totals') {
     const totalsCount = Array.isArray(data.totals) ? data.totals.length : 0;
     const investmentsCount = Array.isArray(data.investments) ? data.investments.length : 0;
+    const traderInvestmentsCount = Array.isArray(data.traderInvestments) ? data.traderInvestments.length : 0;
+    const degiroSaldoCount = Array.isArray(data.degiroSaldo) ? data.degiroSaldo.length : 0;
+    const traderPatrimonioNetoCount = Array.isArray(data.traderPatrimonioNeto) ? data.traderPatrimonioNeto.length : 0;
 
     return {
       title: 'Total entries displayed',
-      count: totalsCount + investmentsCount,
+      count: totalsCount + investmentsCount + traderInvestmentsCount + degiroSaldoCount + traderPatrimonioNetoCount,
       description: 'Sum of the visible monthly totals and investment entries in this section.'
     };
   }
@@ -158,16 +161,18 @@ function buildMonthlyValueMap(items, key) {
   return map;
 }
 
-function renderTotalsHistogram(months, totalsMap, investmentsMap, formatMonth, formatAmount) {
+function renderTotalsHistogram(months, totalsMap, investmentsMap, traderInvestmentsMap, formatMonth, formatAmount) {
   const values = months.map((ym) => {
     const mainDocs = totalsMap[ym] != null ? Number(totalsMap[ym]) : 0;
-    const investments = investmentsMap[ym] != null ? Number(investmentsMap[ym]) : 0;
+    const degiroInvestments = investmentsMap[ym] != null ? Number(investmentsMap[ym]) : 0;
+    const traderInvestments = traderInvestmentsMap[ym] != null ? Number(traderInvestmentsMap[ym]) : 0;
 
     return {
       ym,
       mainDocs,
-      investments,
-      combined: mainDocs + investments
+      degiroInvestments,
+      traderInvestments,
+      combined: mainDocs + degiroInvestments + traderInvestments
     };
   });
 
@@ -200,12 +205,14 @@ function renderTotalsHistogram(months, totalsMap, investmentsMap, formatMonth, f
     const slotStart = chartLeft + (index * slotWidth);
     const barX = slotStart + ((slotWidth - barWidth) / 2);
     const mainHeight = (value.mainDocs / scaleMax) * plotHeight;
-    const investmentHeight = (value.investments / scaleMax) * plotHeight;
+    const degiroInvestmentHeight = (value.degiroInvestments / scaleMax) * plotHeight;
+    const traderInvestmentHeight = (value.traderInvestments / scaleMax) * plotHeight;
     const mainY = chartBottom - mainHeight;
-    const investmentY = mainY - investmentHeight;
-    const labelY = Math.max(18, investmentY - 8);
+    const degiroInvestmentY = mainY - degiroInvestmentHeight;
+    const traderInvestmentY = degiroInvestmentY - traderInvestmentHeight;
+    const labelY = Math.max(18, traderInvestmentY - 8);
     const monthLabel = formatMonth(value.ym);
-    const tooltip = `${monthLabel} | Main Docs: ${formatAmount(value.mainDocs)} | Investments: ${formatAmount(value.investments)} | Total: ${formatAmount(value.combined)}`;
+    const tooltip = `${monthLabel} | Main Docs: ${formatAmount(value.mainDocs)} | Investments DEGIRO: ${formatAmount(value.degiroInvestments)} | Investments TRADER: ${formatAmount(value.traderInvestments)} | Total: ${formatAmount(value.combined)}`;
 
     svg += `<g>`;
     svg += `<title>${tooltip}</title>`;
@@ -213,8 +220,12 @@ function renderTotalsHistogram(months, totalsMap, investmentsMap, formatMonth, f
     if (value.combined > 0) {
       svg += `<rect x="${barX}" y="${mainY}" width="${barWidth}" height="${mainHeight}" rx="10" ry="10" class="chart-bar-main"></rect>`;
 
-      if (value.investments > 0) {
-        svg += `<rect x="${barX}" y="${investmentY}" width="${barWidth}" height="${investmentHeight}" rx="10" ry="10" class="chart-bar-investment"></rect>`;
+      if (value.degiroInvestments > 0) {
+        svg += `<rect x="${barX}" y="${degiroInvestmentY}" width="${barWidth}" height="${degiroInvestmentHeight}" rx="10" ry="10" class="chart-bar-investment"></rect>`;
+      }
+
+      if (value.traderInvestments > 0) {
+        svg += `<rect x="${barX}" y="${traderInvestmentY}" width="${barWidth}" height="${traderInvestmentHeight}" rx="10" ry="10" class="chart-bar-trader-investment"></rect>`;
       }
 
       svg += `<text x="${slotStart + (slotWidth / 2)}" y="${labelY}" text-anchor="middle" class="chart-value-label">${formatAmount(value.combined)}</text>`;
@@ -233,7 +244,8 @@ function renderTotalsHistogram(months, totalsMap, investmentsMap, formatMonth, f
       </div>
       <div class="chart-legend">
         <span class="legend-item"><span class="legend-swatch legend-swatch-main"></span>Totals Main Docs</span>
-        <span class="legend-item"><span class="legend-swatch legend-swatch-investment"></span>Total Investments</span>
+        <span class="legend-item"><span class="legend-swatch legend-swatch-investment"></span>Total Investments DEGIRO</span>
+        <span class="legend-item"><span class="legend-swatch legend-swatch-trader-investment"></span>Total Investments TRADER</span>
       </div>
       <div class="chart-wrap">
         ${svg}
@@ -260,10 +272,13 @@ function renderGrid(data) {
   if (currentType === 'totals') {
     const totalsMap = buildMonthlyValueMap(data.totals, 'total');
     const investmentsMap = buildMonthlyValueMap(data.investments, 'totalOpenBuyValueEur');
+    const traderInvestmentsMap = buildMonthlyValueMap(data.traderInvestments, 'totalOpenBuyValueEur');
+    const degiroSaldoMap = buildMonthlyValueMap(data.degiroSaldo, 'total');
+    const traderPatrimonioNetoMap = buildMonthlyValueMap(data.traderPatrimonioNeto, 'total');
     const monthCount = months.length;
 
-    let html = renderTotalsHistogram(months, totalsMap, investmentsMap, formatMonth, formatAmount);
-    html += `<section class="data-card"><div class="table-wrap"><table><thead><tr>${renderTableHeaderCell(formatColumnHeader('Month', monthCount))}${renderTableHeaderCell(formatColumnHeader('Totals Main Docs', monthCount))}${renderTableHeaderCell(formatColumnHeader('Total Investments', monthCount))}${renderTableHeaderCell(formatColumnHeader('TOTAL', monthCount))}</tr></thead><tbody>`;
+    let html = renderTotalsHistogram(months, totalsMap, investmentsMap, traderInvestmentsMap, formatMonth, formatAmount);
+    html += `<section class="data-card"><div class="table-wrap"><table><thead><tr>${renderTableHeaderCell(formatColumnHeader('Month', monthCount))}${renderTableHeaderCell(formatColumnHeader('Totals Main Docs', monthCount))}${renderTableHeaderCell(formatColumnHeader('Total Investments DEGIRO', monthCount))}${renderTableHeaderCell(formatColumnHeader('Total Investments TRADER', monthCount))}${renderTableHeaderCell(formatColumnHeader('TOTAL', monthCount))}${renderTableHeaderCell(formatColumnHeader('Patrimonio DEGIRO', monthCount))}${renderTableHeaderCell(formatColumnHeader('Patrimonio TRADER', monthCount))}</tr></thead><tbody>`;
 
     // Oldest at bottom, newest at top
     for (let i = months.length - 1; i >= 0; i--) {
@@ -271,8 +286,12 @@ function renderGrid(data) {
       const formattedMonth = formatMonth(ym);
       const totalValue = totalsMap[ym] != null ? totalsMap[ym] : 0;
       const investmentValue = investmentsMap[ym] != null ? investmentsMap[ym] : 0;
-      const combinedTotal = Number(totalValue) + Number(investmentValue);
-      html += `<tr><td>${formattedMonth}</td><td class="cell-ok">${formatAmount(totalValue)}</td><td class="cell-ok">${formatAmount(investmentValue)}</td><td class="cell-ok">${formatAmount(combinedTotal)}</td></tr>`;
+      const traderInvestmentValue = traderInvestmentsMap[ym] != null ? traderInvestmentsMap[ym] : 0;
+      const degiroSaldoValue = degiroSaldoMap[ym] != null ? degiroSaldoMap[ym] : 0;
+      const traderPatrimonioNetoValue = traderPatrimonioNetoMap[ym] != null ? traderPatrimonioNetoMap[ym] : 0;
+      const combinedTotal = Number(totalValue) + Number(investmentValue) + Number(traderInvestmentValue);
+      const patrimonioDegiroValue = Number(degiroSaldoValue) + Number(investmentValue);
+      html += `<tr><td>${formattedMonth}</td><td class="cell-ok">${formatAmount(totalValue)}</td><td class="cell-ok">${formatAmount(investmentValue)}</td><td class="cell-ok">${formatAmount(traderInvestmentValue)}</td><td class="cell-ok">${formatAmount(combinedTotal)}</td><td class="cell-ok">${formatAmount(patrimonioDegiroValue)}</td><td class="cell-ok">${formatAmount(traderPatrimonioNetoValue)}</td></tr>`;
     }
 
     html += '</tbody></table></div></section>';

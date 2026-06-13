@@ -298,6 +298,10 @@ h1 {
   fill: #34d399;
 }
 
+.chart-bar-trader-investment {
+  fill: #f59e0b;
+}
+
 .chart-legend {
   display: flex;
   flex-wrap: wrap;
@@ -325,6 +329,10 @@ h1 {
 
 .legend-swatch-investment {
   background: #34d399;
+}
+
+.legend-swatch-trader-investment {
+  background: #f59e0b;
 }
 
 table {
