@@ -4,6 +4,7 @@ const basePath = window.location.pathname.startsWith('/conta_check_docs')
 
 let currentType = 'main';
 let archiveSummaryPromise = null;
+let mongoConfigPromise = null;
 
 function extractBadgeNumber(str) {
   const match = str.match(/_t_([n]?\d+c\d+)/);
@@ -46,6 +47,78 @@ async function fetchArchiveSummary() {
   }
 
   return archiveSummaryPromise;
+}
+
+async function readJsonResponse(res, fallbackMessage) {
+  const payload = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new Error(payload && payload.error ? payload.error : fallbackMessage);
+  }
+
+  return payload;
+}
+
+async function fetchMongoConfig(forceRefresh = false) {
+  if (forceRefresh || !mongoConfigPromise) {
+    mongoConfigPromise = fetch(`${basePath}/api/mongodb-config`)
+      .then((res) => readJsonResponse(res, 'Failed to load MongoDB configuration.'))
+      .catch((err) => {
+        mongoConfigPromise = null;
+        throw err;
+      });
+  }
+
+  return mongoConfigPromise;
+}
+
+async function updateMongoConfig(url) {
+  const data = await fetch(`${basePath}/api/mongodb-config`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ url })
+  }).then((res) => readJsonResponse(res, 'Failed to update MongoDB configuration.'));
+
+  mongoConfigPromise = Promise.resolve(data);
+  return data;
+}
+
+function setMongoConfigStatus(message, isError = false) {
+  const statusElement = document.getElementById('mongodb-config-status');
+  if (!statusElement) {
+    return;
+  }
+
+  statusElement.textContent = message;
+  statusElement.classList.toggle('is-error', isError);
+  statusElement.classList.toggle('is-success', Boolean(message) && !isError);
+}
+
+function renderMongoConfigState(data) {
+  const input = document.getElementById('mongodb-url');
+  const dbNameElement = document.getElementById('mongodb-db-name');
+
+  if (input && data && typeof data.url === 'string') {
+    input.value = data.url;
+  }
+
+  if (dbNameElement) {
+    dbNameElement.textContent = data && data.dbName
+      ? `Database: ${data.dbName}`
+      : 'Database name unavailable.';
+  }
+}
+
+async function renderMongoConfig() {
+  try {
+    const data = await fetchMongoConfig();
+    renderMongoConfigState(data);
+    setMongoConfigStatus('');
+  } catch (err) {
+    setMongoConfigStatus(err.message, true);
+  }
 }
 
 function formatArchiveEntryLabel(count, singular, plural) {
@@ -448,6 +521,43 @@ async function render() {
   document.getElementById('app').innerHTML = html;
 }
 
+function initMongoConfigControls() {
+  const form = document.getElementById('mongodb-config-form');
+  const input = document.getElementById('mongodb-url');
+  const button = document.getElementById('mongodb-apply-button');
+
+  if (!form || !input || !button) {
+    return;
+  }
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const nextUrl = input.value.trim();
+    if (!nextUrl) {
+      setMongoConfigStatus('MongoDB connection string is required.', true);
+      input.focus();
+      return;
+    }
+
+    button.disabled = true;
+    input.disabled = true;
+    setMongoConfigStatus('Applying MongoDB connection...');
+
+    try {
+      const data = await updateMongoConfig(nextUrl);
+      renderMongoConfigState(data);
+      setMongoConfigStatus('MongoDB connection updated and applied.');
+      await render();
+    } catch (err) {
+      setMongoConfigStatus(err.message, true);
+    } finally {
+      button.disabled = false;
+      input.disabled = false;
+    }
+  });
+}
+
 // Initialize tab click handling
 function initTabs() {
   const tabs = document.getElementById('tabs');
@@ -474,5 +584,7 @@ document.addEventListener('DOMContentLoaded', () => {
     el.classList.toggle('active', el.getAttribute('data-type') === currentType);
   });
   initTabs();
+  initMongoConfigControls();
+  renderMongoConfig();
   render();
 });

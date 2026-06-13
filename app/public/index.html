@@ -16,6 +16,17 @@
     </header>
 
     <section class="toolbar-panel">
+      <form id="mongodb-config-form" class="mongodb-config-panel">
+        <div class="mongodb-config-copy">
+          <p class="mongodb-config-label">MongoDB Connection</p>
+          <p id="mongodb-db-name" class="mongodb-config-db-name">Loading DB configuration...</p>
+        </div>
+        <div class="mongodb-config-controls">
+          <input id="mongodb-url" class="mongodb-config-input" type="text" spellcheck="false" autocomplete="off" placeholder="mongodb://host:27017" aria-label="MongoDB connection string">
+          <button id="mongodb-apply-button" type="submit" class="mongodb-config-button">Apply DB Connection</button>
+        </div>
+        <p id="mongodb-config-status" class="mongodb-config-status" aria-live="polite"></p>
+      </form>
       <div id="tabs" class="tabs" aria-label="Sections">
         <button data-type="main" class="tab active">Main Docs</button>
         <button data-type="extractentries" class="tab">Extract Entries</button>

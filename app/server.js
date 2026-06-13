@@ -6,6 +6,8 @@ const { MongoClient } = require('mongodb');
 const app = express();
 const PORT = 9000;
 
+app.use(express.json());
+
 function directoryExists(path) {
   try {
     return fs.statSync(path).isDirectory();
@@ -61,6 +63,11 @@ config.mongodb = {
   ...defaultConfig.mongodb,
   ...(config.mongodb || {})
 };
+
+function persistConfig() {
+  fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf8');
+}
+
 logMessage('Init', `Using ConfigFile: ${CONFIG_FILE}`)
 logMessage('Init', `Using Config param, config.archiveFolderPath: ${config.archiveFolderPath}`)
 
@@ -224,7 +231,7 @@ function getAllMonthsInRange(start, end) {
   return result;
 }
 
-async function getMonthlyInvestmentsFromDb(collectionName = 'operation_position_per_month') {
+async function getMonthlyInvestmentsFromDb(collectionName = 'monthly_op_pos', query = {}) {
   if (!config.mongodb.url || !config.mongodb.dbName) {
     logMessage('getMonthlyInvestmentsFromDb', `MongoDB config missing. Skipping investments lookup for ${collectionName}.`);
     return {};
@@ -236,7 +243,7 @@ async function getMonthlyInvestmentsFromDb(collectionName = 'operation_position_
     await client.connect();
     const collection = client.db(config.mongodb.dbName).collection(collectionName);
     const docs = await collection.find(
-      {},
+      query,
       {
         projection: {
           month: 1,
@@ -264,6 +271,46 @@ async function getMonthlyInvestmentsFromDb(collectionName = 'operation_position_
     await client.close();
   }
 }
+
+app.get('/api/mongodb-config', (req, res) => {
+  res.json({
+    url: config?.mongodb?.url || '',
+    dbName: config?.mongodb?.dbName || ''
+  });
+});
+
+app.post('/api/mongodb-config', async (req, res) => {
+  const nextUrl = typeof req.body?.url === 'string' ? req.body.url.trim() : '';
+
+  if (!nextUrl) {
+    return res.status(400).json({ error: 'MongoDB connection string is required.' });
+  }
+
+  const client = new MongoClient(nextUrl);
+
+  try {
+    await client.connect();
+    await client.db(config.mongodb.dbName).command({ ping: 1 });
+
+    config.mongodb = {
+      ...config.mongodb,
+      url: nextUrl
+    };
+    persistConfig();
+
+    logMessage('/api/mongodb-config', `MongoDB connection string updated successfully for db ${config.mongodb.dbName}.`);
+    return res.json({
+      ok: true,
+      url: config.mongodb.url,
+      dbName: config.mongodb.dbName
+    });
+  } catch (err) {
+    logMessage('/api/mongodb-config', `ERROR: Failed to update MongoDB connection string: ${err.message}`);
+    return res.status(400).json({ error: `Failed to connect using the provided MongoDB connection string: ${err.message}` });
+  } finally {
+    await client.close();
+  }
+});
 
 app.get('/api/archive-summary', (req, res) => {
   try {
@@ -499,13 +546,13 @@ app.get('/api/archive-summary', (req, res) => {
     let investmentsByMonth = {};
     let traderInvestmentsByMonth = {};
     try {
-      investmentsByMonth = await getMonthlyInvestmentsFromDb('operation_position_per_month');
+      investmentsByMonth = await getMonthlyInvestmentsFromDb('monthly_op_pos', { broker: 'DEGIRO' });
     } catch (err) {
       logMessage('/api/totals', `ERROR: Failed to load investments from MongoDB: ${err.message}`);
     }
 
     try {
-      traderInvestmentsByMonth = await getMonthlyInvestmentsFromDb('operation_position_per_month_trader');
+      traderInvestmentsByMonth = await getMonthlyInvestmentsFromDb('monthly_op_pos', { broker: 'TRADER' });
     } catch (err) {
       logMessage('/api/totals', `ERROR: Failed to load trader investments from MongoDB: ${err.message}`);
     }
