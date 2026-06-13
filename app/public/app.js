@@ -364,7 +364,7 @@ function renderGrid(data) {
       const traderPatrimonioNetoValue = traderPatrimonioNetoMap[ym] != null ? traderPatrimonioNetoMap[ym] : 0;
       const combinedTotal = Number(totalValue) + Number(investmentValue) + Number(traderInvestmentValue);
       const patrimonioDegiroValue = Number(degiroSaldoValue) + Number(investmentValue);
-      html += `<tr><td>${formattedMonth}</td><td class="cell-ok">${formatAmount(totalValue)}</td><td class="cell-ok">${formatAmount(investmentValue)}</td><td class="cell-ok">${formatAmount(traderInvestmentValue)}</td><td class="cell-ok">${formatAmount(combinedTotal)}</td><td class="cell-ok">${formatAmount(patrimonioDegiroValue)}</td><td class="cell-ok">${formatAmount(traderPatrimonioNetoValue)}</td></tr>`;
+      html += `<tr><td>${formattedMonth}</td><td class="cell-ok-muted">${formatAmount(totalValue)}</td><td class="cell-ok-muted">${formatAmount(investmentValue)}</td><td class="cell-ok-muted">${formatAmount(traderInvestmentValue)}</td><td class="cell-ok">${formatAmount(combinedTotal)}</td><td class="cell-info">${formatAmount(patrimonioDegiroValue)}</td><td class="cell-info">${formatAmount(traderPatrimonioNetoValue)}</td></tr>`;
     }
 
     html += '</tbody></table></div></section>';

@@ -516,15 +516,34 @@ td {
 }
 
 .cell-ok,
+.cell-ok-muted,
+.cell-info,
 .cell-fail,
 .cell-warn {
   font-size: 1.05rem;
+}
+
+.cell-ok,
+.cell-fail,
+.cell-warn {
   font-weight: 700;
 }
 
 .cell-ok {
   color: var(--ok);
   background: var(--ok-soft);
+}
+
+.cell-ok-muted {
+  color: var(--ok);
+  background: var(--ok-soft);
+  font-weight: 400;
+}
+
+.cell-info {
+  color: #94a3b8;
+  background: rgba(51, 65, 85, 0.26);
+  font-weight: 400;
 }
 
 .cell-fail {
